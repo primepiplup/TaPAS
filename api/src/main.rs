@@ -1,21 +1,22 @@
 use domain;
+use rocket::serde::{json::Json, Deserialize};
 
 #[macro_use]
 extern crate rocket;
 
-#[get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
+#[derive(Deserialize)]
+#[serde(crate = "rocket::serde")]
+struct Input<'a> {
+    #[serde(rename = "fieldInput")]
+    field_text: &'a str,
 }
 
-#[get("/test")]
-fn test() -> &'static str {
-    domain::get_str()
+#[post("/input", format = "application/json", data = "<form_input>")]
+fn input(form_input: Json<Input<'_>>) -> () {
+    println!("{:?}", domain::create_datapoint(form_input.field_text));
 }
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build()
-        .mount("/", routes![index])
-        .mount("/api", routes![test])
+    rocket::build().mount("/api", routes![input])
 }
