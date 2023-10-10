@@ -8,12 +8,14 @@
  - Categorical comparison of continuous data (visualized - t-test)
  - Linear regression against continuous data (visualized)
 ### Should
- - Edit tagged information
- - Batch edit
+ - Display buttons to apply tags to ease information ingress
+ - Edit information tags, apply new tags, remove, etc.
+ - Batch edit for ease of use and analysis
  - Provide goal reach date estimation based on analysis
 ### Could
  - Include other (potentially) relevant statistical analysis methods
  - Other information tracking features for non-numerical information
+ - Apply external information sources/projection/models on user data
 ### Would (won't)
  - Vague dimensionality reduction analysis like PCA
  - Neural networks
