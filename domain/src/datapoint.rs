@@ -1,10 +1,32 @@
 use chrono::prelude::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Datapoint {
     datetime: DateTime<Local>,
     data: String,
     tags: Vec<String>,
+}
+
+impl Datapoint {
+    pub fn data_same_as(&self, other: &Datapoint) -> bool {
+        self.data == other.data
+    }
+
+    pub fn tags_same_as(&self, other: &Datapoint) -> bool {
+        self.tags == other.tags
+    }
+
+    pub fn get_data(&self) -> &String {
+        &self.data
+    }
+
+    pub fn get_datetime(&self) -> &DateTime<Local> {
+        &self.datetime
+    }
+
+    pub fn get_tags(&self) -> &Vec<String> {
+        &self.tags
+    }
 }
 
 pub fn create_datapoint(text: &str) -> Datapoint {
@@ -49,6 +71,22 @@ fn collect_tags(tag_iterator: Vec<&str>) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn two_datapoints_created_with_same_data_are_data_equal() {
+        let datapoint_a = create_datapoint("same data +with +tags");
+        let datapoint_b = create_datapoint("same data +different +tags +asdfasdf");
+        assert!(datapoint_a.data_same_as(&datapoint_b));
+    }
+
+    #[test]
+    fn two_datapoints_created_with_same_tags_are_tag_equal() {
+        let datapoint_a = create_datapoint("different data +same +tags");
+        let datapoint_b = create_datapoint(
+            "waaay differnet data aaa totally different +same +tags   accidental input",
+        );
+        assert!(datapoint_a.tags_same_as(&datapoint_b));
+    }
 
     #[test]
     fn all_text_preceding_plus_becomes_data() {
