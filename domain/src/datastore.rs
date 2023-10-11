@@ -22,6 +22,21 @@ impl Datastore {
         let lock = self.datapoints.lock().expect("mutex holder crashed");
         lock.clone()
     }
+
+    pub fn query(&self, query: &str) -> Vec<Datapoint> {
+        let collector = Vec::new();
+        let lock = self.datapoints.lock().expect("mutex holder crashed");
+
+        collector
+    }
+}
+
+fn query_parser(query: &str) -> Vec<String> {
+    let plus_replaced = query.trim().replace("+", " ");
+    plus_replaced
+        .split_whitespace()
+        .map(|s| s.to_string())
+        .collect()
 }
 
 #[cfg(test)]
@@ -29,6 +44,38 @@ mod tests {
     use crate::datapoint;
 
     use super::*;
+
+    #[test]
+    fn query_parser_removes_plusses() {
+        let mut expected: Vec<&str> = Vec::new();
+        expected.push("tag");
+
+        let parsed = query_parser("+tag");
+
+        assert_eq!(expected, parsed);
+    }
+
+    #[test]
+    fn query_parser_separates_on_whitespace() {
+        let mut expected: Vec<&str> = Vec::new();
+        expected.push("tag");
+        expected.push("another");
+
+        let parsed = query_parser("+tag another");
+
+        assert_eq!(expected, parsed);
+    }
+
+    #[test]
+    fn query_parser_separates_on_plusses() {
+        let mut expected: Vec<&str> = Vec::new();
+        expected.push("tag");
+        expected.push("another");
+
+        let parsed = query_parser("+tag+another");
+
+        assert_eq!(expected, parsed);
+    }
 
     #[test]
     fn datapoints_are_stored_in_datastore_after_add_function() {
