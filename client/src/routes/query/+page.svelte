@@ -1,5 +1,5 @@
 <script lang='ts'>
-  let datapoints: {data: string, tags: string[]}[];
+  let datapoints: {timestamp: string, data: string, tags: string[]}[];
   let value: string;
 
   async function sendQuery() {
@@ -29,6 +29,7 @@
   {#if datapoints}
     {#each datapoints as datapoint}
       <div>
+        <span class="timestamp">{datapoint.timestamp}</span>
         <span class="data">{datapoint.data}</span>
         {#each datapoint.tags as tag}
           <span class="tag">+{tag}&nbsp</span>
