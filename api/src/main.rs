@@ -22,7 +22,7 @@ fn input(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> () {
 
 #[post("/query", format = "application/json", data = "<form_input>")]
 fn query(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> Json<Vec<DatapointDTO>> {
-    let datapoints = datastorage.retrieve_datapoints();
+    let datapoints = datastorage.query(form_input.value);
     Json(vec_from(datapoints))
 }
 
