@@ -24,9 +24,22 @@ impl Datastore {
     }
 
     pub fn query(&self, query: &str) -> Vec<Datapoint> {
-        let collector = Vec::new();
-        let lock = self.datapoints.lock().expect("mutex holder crashed");
-
+        let mut collector = Vec::new();
+        let parsed = query_parser(query);
+        let datapoints = self.retrieve_datapoints();
+        if parsed.len() < 1 || &parsed[0] == "" {
+            return datapoints;
+        }
+        for datapoint in datapoints {
+            let parsed = &parsed;
+            let truthvalues: Vec<bool> = parsed
+                .into_iter()
+                .map(|tag| datapoint.get_tags().contains(&tag))
+                .collect();
+            if !truthvalues.contains(&false) {
+                collector.push(datapoint.clone());
+            }
+        }
         collector
     }
 }
@@ -75,6 +88,30 @@ mod tests {
         let parsed = query_parser("+tag+another");
 
         assert_eq!(expected, parsed);
+    }
+
+    #[test]
+    fn query_with_tag_only_retrieves_tagged_datapoint() {
+        let datastore = Datastore::new();
+
+        datastore.add_datapoint("information +with +tags");
+        datastore.add_datapoint("information +different");
+
+        let query_result = datastore.query("+different");
+
+        assert_eq!(1, query_result.len());
+    }
+
+    #[test]
+    fn query_with_word_only_retrieves_tagged_datapoint() {
+        let datastore = Datastore::new();
+
+        datastore.add_datapoint("information +with +tags");
+        datastore.add_datapoint("information +different");
+
+        let query_result = datastore.query("different");
+
+        assert_eq!(1, query_result.len());
     }
 
     #[test]
