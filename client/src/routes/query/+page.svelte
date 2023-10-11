@@ -1,10 +1,10 @@
 <script lang='ts'>
-  let information: string;
+  let datapoints: {data: string, tags: string[]}[];
   let value: string;
 
   async function sendQuery() {
     let requestBody = {
-      fieldInput: value
+      fieldInput: value ? value : ""
     };
     let response = await fetch("api/query", {
       method: "POST",
@@ -13,7 +13,7 @@
       },
       body: JSON.stringify(requestBody),
     });
-    information = await response.text();
+    datapoints = await response.json();
   };
 
 </script>
@@ -25,9 +25,18 @@
   <button on:click={ sendQuery } class="center">Send Query</button>
 </div>
 
-{#if information}
-  <p>{information}</p>
-{/if}
+<div>
+  {#if datapoints}
+    {#each datapoints as datapoint}
+      <div>
+        <span class="data">{datapoint.data}</span>
+        {#each datapoint.tags as tag}
+          <span class="tag">+{tag}&nbsp</span>
+        {/each}
+      </div>
+    {/each}
+  {/if}
+</div>
 
 <style>
   div {
@@ -37,5 +46,13 @@
 
   input {
     width: 25%;
+  }
+
+  .data {
+    font-weight: bold;
+  }
+
+  .tag {
+    font-style: italic;
   }
 </style>
