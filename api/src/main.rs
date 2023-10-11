@@ -1,4 +1,7 @@
-use domain::{datapoint, datastore::Datastore};
+mod datapointDTO;
+
+use crate::datapointDTO::{vec_from, DatapointDTO};
+use domain::{datapoint::Datapoint, datastore::Datastore};
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket::State;
 
@@ -18,8 +21,9 @@ fn input(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> () {
 }
 
 #[post("/query", format = "application/json", data = "<form_input>")]
-fn query(form_input: Json<Form<'_>>) -> () /*Json<Vec<&str>>*/ {
-    println!("{:?}", datapoint::create_datapoint(form_input.value));
+fn query(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> Json<Vec<DatapointDTO>> {
+    let datapoints = datastorage.retrieve_datapoints();
+    Json(vec_from(datapoints))
 }
 
 #[launch]
