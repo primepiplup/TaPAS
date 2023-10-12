@@ -10,6 +10,12 @@ export default defineConfig({
 				changeOrigin: true,
 			 	secure: false,
 				ws: true
+			},
+			'/plot': {
+				target: 'http://localhost:8000',
+				changeOrigin: true,
+			 	secure: false,
+				ws: true
 			}
 		}
 	}
