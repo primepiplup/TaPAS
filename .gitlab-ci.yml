@@ -7,3 +7,7 @@ testing:
     stage: test
     script:
         - cargo test
+        - cargo +stable install cargo-llvm-cov --locked
+        - cargo llvm-cov --lib --json > cov.json
+        - ./coverage
+    coverage: '/Total\:.*\%/'
