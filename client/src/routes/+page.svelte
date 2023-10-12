@@ -19,6 +19,7 @@
 </script>
 
 <div>
+  <p>Please provide some input</p>
   <input type="text" class="center" bind:value on:keydown={e => { if(e.key == "Enter") {sendInput()} } }>
   <br/>
   <button on:click={ sendInput } class="center">Send Input</button>
@@ -32,5 +33,9 @@
   div {
     padding-top: 1em;
     text-align: center;
+  }
+
+  input {
+    width: 25%;
   }
 </style>
