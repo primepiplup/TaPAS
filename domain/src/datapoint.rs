@@ -31,7 +31,11 @@ impl Datapoint {
     pub fn strip_non_numeric(self) -> Datapoint {
         Datapoint {
             datetime: self.datetime,
-            data: self.data.chars().filter(|c| c.is_digit(10)).collect(),
+            data: self
+                .data
+                .chars()
+                .filter(|c| c.is_digit(10) || c == &'.')
+                .collect(),
             tags: self.tags,
         }
     }
