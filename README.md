@@ -1,4 +1,6 @@
 # TaPAS's a Personal Analysis Suite
+![ci-pipeline](https://git.sogyo.nl/dkuik/tapas/badges/main/pipeline.svg?key_text=CI-pipeline&key_width=100)
+![coverage](https://git.sogyo.nl/dkuik/tapas/badges/main/coverage.svg)
 
 ## MoSCoW
 ### Must

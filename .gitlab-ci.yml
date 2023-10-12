@@ -1,0 +1,16 @@
+image: rust:slim-bookworm
+
+stages:
+    - test
+
+testing:
+    stage: test
+    script:
+        - cargo test
+        - apt-get update
+        - apt-get -y install curl
+        - ./install-llvm-cov
+        - cargo llvm-cov --lib --json > cov.json
+        - apt-get -y install jq
+        - ./coverage
+    coverage: '/Total\:.*\%/'
