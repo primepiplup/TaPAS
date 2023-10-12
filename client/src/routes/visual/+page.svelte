@@ -1,5 +1,5 @@
 <script lang='ts'>
-  let datapoints: {timestamp: string, data: string, tags: string[]}[];
+  let image: {filename: string};
   let value: string;
 
   async function sendPlotQuery() {
@@ -13,7 +13,7 @@
       },
       body: JSON.stringify(requestBody),
     });
-    datapoints = await response.json();
+    image = await response.json();
   };
 
 </script>
@@ -26,16 +26,8 @@
 </div>
 
 <div>
-  {#if datapoints}
-    {#each datapoints as datapoint}
-      <div>
-        <span class="timestamp">{datapoint.timestamp}</span>
-        <span class="data">{datapoint.data}</span>
-        {#each datapoint.tags as tag}
-          <span class="tag">+{tag}&nbsp</span>
-        {/each}
-      </div>
-    {/each}
+  {#if image}
+   <img src={"/plot/" + image.filename} alt="cool plot" />
   {/if}
 </div>
 
