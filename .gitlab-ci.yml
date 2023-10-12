@@ -7,6 +7,7 @@ testing:
     stage: test
     script:
         - cargo test
+        - apt-get install curl
         - ./install-llvm-cov
         - cargo llvm-cov --lib --json > cov.json
         - ./coverage
