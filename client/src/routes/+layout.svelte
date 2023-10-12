@@ -15,6 +15,7 @@
 <nav>
   <a href="/">Input</a>
   <a href="/query">Query</a>
+  <a href="/visual">Visualize</a>
 </nav>
 
 <slot />
