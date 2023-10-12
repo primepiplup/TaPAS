@@ -27,6 +27,14 @@ impl Datapoint {
     pub fn get_tags(&self) -> &Vec<String> {
         &self.tags
     }
+
+    pub fn strip_non_numeric(self) -> Datapoint {
+        Datapoint {
+            datetime: self.datetime,
+            data: self.data.chars().filter(|c| c.is_digit(10)).collect(),
+            tags: self.tags,
+        }
+    }
 }
 
 pub fn create_datapoint(text: &str) -> Datapoint {
@@ -71,6 +79,15 @@ fn collect_tags(tag_iterator: Vec<&str>) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn strip_non_numeric_strips_non_numeric_data() {
+        let datapoint = create_datapoint("some data 40 numbers");
+
+        let transformed = datapoint.strip_non_numeric();
+
+        assert_eq!(transformed.get_data(), "40");
+    }
 
     #[test]
     fn two_datapoints_created_with_same_data_are_data_equal() {
