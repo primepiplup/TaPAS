@@ -19,7 +19,7 @@ pub fn from(datapoint: Datapoint) -> DatapointDTO {
     }
 }
 
-pub fn vec_from(datapoints: Vec<Datapoint>) -> Vec<DatapointDTO> {
+pub fn dto_vec_from(datapoints: Vec<Datapoint>) -> Vec<DatapointDTO> {
     let mut collector = Vec::new();
     for datapoint in datapoints {
         collector.push(from(datapoint));
