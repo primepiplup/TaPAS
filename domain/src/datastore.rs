@@ -92,6 +92,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn data_added_tagged_before_current_datetime_is_inserted_in_appropriate_location() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("80kg +weight +DATE:2023-10-16");
+        datastore.add_datapoint("80.5kg +weight +DATE:2023-10-15");
+
+        let datapoints = datastore.retrieve_datapoints();
+
+        assert_eq!(datapoints[0].get_data(), "80.5kg");
+    }
+
+    #[test]
     fn value_command_in_query_strips_non_numeric_information() {
         let datastore = Datastore::new();
         datastore.add_datapoint("80kg +weight");
