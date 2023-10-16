@@ -72,7 +72,7 @@ fn apply_command(datapoints: Vec<Datapoint>, command: String) -> Vec<Datapoint> 
 fn strip_non_numeric(datapoints: Vec<Datapoint>) -> Vec<Datapoint> {
     datapoints
         .into_iter()
-        .map(|point| point.strip_non_numeric())
+        .map(|point| point.get_non_numeric_stripped())
         .collect()
 }
 
