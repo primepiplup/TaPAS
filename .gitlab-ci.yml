@@ -6,11 +6,10 @@ stages:
 testing:
     stage: test
     script:
-        - cargo test
         - apt-get update
-        - apt-get -y install curl
+        - apt-get -y install curl jq pkg-config libfreetype6-dev libfontconfig1-dev
+        - cargo test
         - ./install-llvm-cov
         - cargo llvm-cov --lib --json > cov.json
-        - apt-get -y install jq
         - ./coverage
     coverage: '/Total\:.*\%/'

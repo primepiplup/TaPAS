@@ -23,12 +23,12 @@ impl Datastore {
         lock.clone()
     }
 
-    pub fn query(&self, query: &str) -> Vec<Datapoint> {
+    pub fn query(&self, query: &str) -> (Vec<Datapoint>, Vec<Vec<String>>) {
         let mut collector: Vec<Datapoint> = Vec::new();
         let parsed: Vec<Vec<String>> = query_parser(query);
         let datapoints: Vec<Datapoint> = self.retrieve_datapoints();
         if parsed.len() < 1 || &parsed[0][0] == "" {
-            return datapoints;
+            return (datapoints, parsed);
         }
         for datapoint in datapoints {
             let parsed = &parsed;
@@ -52,14 +52,17 @@ fn query_parser(query: &str) -> Vec<Vec<String>> {
         .collect()
 }
 
-fn apply_query_commands(datapoints: Vec<Datapoint>, queries: Vec<Vec<String>>) -> Vec<Datapoint> {
+fn apply_query_commands(
+    datapoints: Vec<Datapoint>,
+    queries: Vec<Vec<String>>,
+) -> (Vec<Datapoint>, Vec<Vec<String>>) {
     let mut transformed = datapoints;
-    for element in queries {
+    for element in &queries {
         if element.len() > 1 {
             transformed = apply_command(transformed, element[1].clone());
         }
     }
-    transformed
+    (transformed, queries)
 }
 
 fn apply_command(datapoints: Vec<Datapoint>, command: String) -> Vec<Datapoint> {
@@ -72,7 +75,7 @@ fn apply_command(datapoints: Vec<Datapoint>, command: String) -> Vec<Datapoint> 
 fn strip_non_numeric(datapoints: Vec<Datapoint>) -> Vec<Datapoint> {
     datapoints
         .into_iter()
-        .map(|point| point.strip_non_numeric())
+        .map(|point| point.get_non_numeric_stripped())
         .collect()
 }
 
@@ -88,7 +91,7 @@ mod tests {
         datastore.add_datapoint("80kg +weight");
         datastore.add_datapoint("8kg +curl");
 
-        let retrieved = datastore.query("curl:value");
+        let (retrieved, parsed) = datastore.query("curl:value");
 
         assert_eq!(retrieved[0].get_data(), "8");
     }
@@ -152,7 +155,7 @@ mod tests {
         datastore.add_datapoint("information +with +tags");
         datastore.add_datapoint("information +different");
 
-        let query_result = datastore.query("+different");
+        let (query_result, parsed) = datastore.query("+different");
 
         assert_eq!(1, query_result.len());
     }
@@ -164,7 +167,7 @@ mod tests {
         datastore.add_datapoint("information +with +tags");
         datastore.add_datapoint("information +different");
 
-        let query_result = datastore.query("different");
+        let (query_result, parsed) = datastore.query("different");
 
         assert_eq!(1, query_result.len());
     }
