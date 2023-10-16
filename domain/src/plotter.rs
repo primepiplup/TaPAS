@@ -4,27 +4,30 @@ use crate::datapoint::{create_datapoint, Datapoint};
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone};
 use plotters::prelude::*;
 
-pub fn basic_plot(data: &Vec<Datapoint>) -> Result<String, Box<dyn std::error::Error>> {
+pub fn basic_plot(
+    data: &Vec<Datapoint>,
+    parsed_query: Vec<Vec<String>>,
+) -> Result<String, Box<dyn std::error::Error>> {
     let num_data = match get_numeric_data(data) {
         Some(result) => result,
         None => return Err(Box::new(Error::new(std::io::ErrorKind::NotFound, "test"))),
     };
 
-    let filename = "image.png";
-    let location: String = format!("generated/{}", filename);
-    let root = BitMapBackend::new(&location, (640, 480)).into_drawing_area();
-    root.fill(&WHITE)?;
-
     let datetimes = get_datetimes(data);
-
     let (lower_date, upper_date): (DateTime<Local>, DateTime<Local>) = get_daterange(data);
     let (lower_num, upper_num): (f32, f32) = apply_margin(get_upper_lower(&num_data));
     let as_date: bool = plot_as_dates((lower_date, upper_date));
-
     let datapoints: Vec<(DateTime<Local>, f32)> = datetimes.into_iter().zip(num_data).collect();
 
+    let filename = generate_filename();
+    let location: String = format!("generated/{}", filename);
+    let plot_title: String = generate_plot_title(parsed_query);
+
+    let root = BitMapBackend::new(&location, (640, 480)).into_drawing_area();
+    root.fill(&WHITE)?;
+
     let mut chart = ChartBuilder::on(&root)
-        .caption("First chart", ("sans-serif", 50).into_font())
+        .caption(plot_title, ("sans-serif", 35).into_font())
         .margin(10)
         .x_label_area_size(30)
         .y_label_area_size(30)
@@ -83,6 +86,19 @@ fn get_daterange(data: &Vec<Datapoint>) -> (DateTime<Local>, DateTime<Local>) {
     }
 }
 
+fn generate_filename() -> String {
+    let now = Local::now();
+    format!("{}.png", now.format("%Y%m%d%H%M%S"))
+}
+
+fn generate_plot_title(parsed_query: Vec<Vec<String>>) -> String {
+    let tags: Vec<String> = parsed_query
+        .into_iter()
+        .map(|elem| elem[0].clone())
+        .collect();
+    format!("Plot for: {}", tags.join(", "))
+}
+
 fn format_datetime(datetime: &DateTime<Local>, as_date: bool) -> String {
     if as_date {
         format!("{}", datetime.format("%F"))
@@ -120,6 +136,19 @@ mod test {
     use chrono::Duration;
 
     use super::*;
+
+    #[test]
+    fn generate_plot_title_takes_all_elements_of_vector_and_returns_title() {
+        let parsed = vec![
+            vec!["something".to_string(), "value".to_string()],
+            vec!["tag".to_string()],
+            vec!["else".to_string()],
+        ];
+
+        let title = generate_plot_title(parsed);
+
+        assert_eq!(title, "Plot for: something, tag, else")
+    }
 
     #[test]
     fn plot_as_dates_returns_true_if_dates_more_than_two_days_apart() {
@@ -168,7 +197,7 @@ mod test {
     fn empty_input_into_plot_returns_error() {
         let datapoints: Vec<Datapoint> = Vec::new();
 
-        let output = basic_plot(&datapoints);
+        let output = basic_plot(&datapoints, Vec::new());
 
         assert_eq!(output.ok(), None);
     }
