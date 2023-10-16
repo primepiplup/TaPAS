@@ -1,3 +1,5 @@
+use std::num::ParseFloatError;
+
 use chrono::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -28,16 +30,24 @@ impl Datapoint {
         &self.tags
     }
 
-    pub fn strip_non_numeric(self) -> Datapoint {
+    pub fn get_non_numeric_stripped(self) -> Datapoint {
         Datapoint {
             datetime: self.datetime,
-            data: self
-                .data
-                .chars()
-                .filter(|c| c.is_digit(10) || c == &'.')
-                .collect(),
+            data: self.strip_non_numeric(),
             tags: self.tags,
         }
+    }
+
+    pub fn get_as_numeric(&self) -> Result<f32, ParseFloatError> {
+        let num = self.strip_non_numeric();
+        num.parse()
+    }
+
+    fn strip_non_numeric(&self) -> String {
+        self.data
+            .chars()
+            .filter(|c| c.is_digit(10) || c == &'.')
+            .collect()
     }
 }
 
@@ -88,7 +98,7 @@ mod tests {
     fn strip_non_numeric_strips_non_numeric_data() {
         let datapoint = create_datapoint("some data 40 numbers");
 
-        let transformed = datapoint.strip_non_numeric();
+        let transformed = datapoint.get_non_numeric_stripped();
 
         assert_eq!(transformed.get_data(), "40");
     }
