@@ -30,14 +30,14 @@ fn input(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> () {
 
 #[post("/query", format = "application/json", data = "<form_input>")]
 fn query(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> Json<Vec<DatapointDTO>> {
-    let datapoints = datastorage.query(form_input.value);
+    let (datapoints, parsed) = datastorage.query(form_input.value);
     Json(dto_vec_from(datapoints))
 }
 
 #[post("/plot", format = "application/json", data = "<form_input>")]
 fn plot(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> Json<Image> {
-    let datapoints = datastorage.query(form_input.value);
-    let filename = basic_plot(&datapoints).expect("Plot broke...");
+    let (datapoints, parsed) = datastorage.query(form_input.value);
+    let filename = basic_plot(&datapoints, parsed).expect("Plot broke...");
     Json(Image { filename })
 }
 
