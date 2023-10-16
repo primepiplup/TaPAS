@@ -52,10 +52,55 @@ impl Datapoint {
 }
 
 pub fn create_datapoint(text: &str) -> Datapoint {
+    let tags = get_tags_from(text);
+    let data = get_data_from(text);
+    handle_tags_and_create_datapoint(data, tags)
+}
+
+fn handle_tags_and_create_datapoint(data: String, tags: Vec<String>) -> Datapoint {
+    let mut datetime: DateTime<Local> = Local::now();
+    let mut date = datetime.date_naive();
+    let mut time = datetime.time();
+
+    let mut tag_collector = Vec::new();
+
+    for tag in &tags {
+        let command: Vec<&str> = tag.split(':').collect();
+        match command[0] {
+            "D" => date = parse_date(command),
+            "DATE" => date = parse_date(command),
+            "T" => time = parse_time(command),
+            "TIME" => time = parse_time(command),
+            non_command => tag_collector.push(non_command.to_string()),
+        }
+    }
+
+    datetime = Local.from_local_datetime(&date.and_time(time)).unwrap();
+
     Datapoint {
-        datetime: Utc::now().with_timezone(&Local),
-        data: get_data_from(text),
-        tags: get_tags_from(text),
+        data,
+        tags: tag_collector,
+        datetime,
+    }
+}
+
+fn parse_date(command: Vec<&str>) -> NaiveDate {
+    if command.len() < 2 {
+        return Local::now().date_naive();
+    };
+    match NaiveDate::parse_from_str(command[1], "%Y-%m-%d") {
+        Ok(date) => date,
+        Err(_) => Local::now().date_naive(),
+    }
+}
+
+fn parse_time(command: Vec<&str>) -> NaiveTime {
+    if command.len() < 2 {
+        return Local::now().time();
+    };
+    match NaiveTime::parse_from_str(command[1], "%H-%M-%S") {
+        Ok(date) => date,
+        Err(_) => Local::now().time(),
     }
 }
 
