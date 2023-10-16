@@ -26,8 +26,8 @@
 
 ## Personal Goals
 
- - Stay open and social even when submerged deep into project
- - Try to keep things simple and just implement things - everything doesn't have to be perfectly defined at the start
+ - Bouncing ideas off of others helps with figuring out problems, even if they don't immediately know the answer themselves. I would like to talk more about the thoughts I am having and to have them looked at/tested by my peers.
+ - Try to keep things small and simple, implement compartmentalized features - everything doesn't have to be perfectly defined at the start. If all elements are well thought out a well thought-out architecture will emerge.
 
 ## Technical Goals
 
