@@ -15,6 +15,12 @@ impl Datastore {
     pub fn add_datapoint(&self, input: &str) -> () {
         let datapoint = create_datapoint(input);
         let mut lock = self.datapoints.lock().expect("mutex holder crashed");
+        for i in 0..lock.len() {
+            if lock[i].get_datetime() > datapoint.get_datetime() {
+                lock.insert(i, datapoint.clone());
+                return;
+            }
+        }
         lock.push(datapoint);
     }
 
