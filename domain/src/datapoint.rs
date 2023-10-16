@@ -140,6 +140,42 @@ mod tests {
     use super::*;
 
     #[test]
+    fn using_d_tag_followed_by_date_returns_datapoint_with_datetime_of_said_date() {
+        let expected = NaiveDate::from_ymd_opt(2022, 2, 10).unwrap();
+
+        let datapoint = create_datapoint("Some data tagged with +D:2022-02-10");
+
+        assert_eq!(datapoint.get_datetime().date_naive(), expected);
+    }
+
+    #[test]
+    fn using_date_tag_followed_by_date_returns_datapoint_with_datetime_of_said_date() {
+        let expected = NaiveDate::from_ymd_opt(2022, 2, 10).unwrap();
+
+        let datapoint = create_datapoint("Some data tagged with +DATE:2022-02-10");
+
+        assert_eq!(datapoint.get_datetime().date_naive(), expected);
+    }
+
+    #[test]
+    fn using_t_tag_followed_by_time_returns_datapoint_with_datetime_of_said_time() {
+        let expected = NaiveTime::from_hms_opt(12, 34, 56).unwrap();
+
+        let datapoint = create_datapoint("Some data tagged with +T:12-34-56");
+
+        assert_eq!(datapoint.get_datetime().time(), expected);
+    }
+
+    #[test]
+    fn using_time_tag_followed_by_time_returns_datapoint_with_datetime_of_said_time() {
+        let expected = NaiveTime::from_hms_opt(12, 34, 56).unwrap();
+
+        let datapoint = create_datapoint("Some data tagged with +TIME:12-34-56");
+
+        assert_eq!(datapoint.get_datetime().time(), expected);
+    }
+
+    #[test]
     fn strip_non_numeric_strips_non_numeric_data() {
         let datapoint = create_datapoint("some data 40 numbers");
 
