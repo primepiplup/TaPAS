@@ -1,7 +1,7 @@
 use std::io::Error;
 
 use crate::datapoint::{create_datapoint, Datapoint};
-use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone};
+use chrono::{DateTime, Local, TimeZone};
 use plotters::prelude::*;
 
 pub fn basic_plot(
@@ -19,7 +19,7 @@ pub fn basic_plot(
     let as_date: bool = plot_as_dates((lower_date, upper_date));
     let datapoints: Vec<(DateTime<Local>, f32)> = datetimes.into_iter().zip(num_data).collect();
 
-    let filename = generate_filename();
+    let filename = generate_filename(Local::now());
     let location: String = format!("generated/{}", filename);
     let plot_title: String = generate_plot_title(parsed_query);
 
@@ -86,9 +86,8 @@ fn get_daterange(data: &Vec<Datapoint>) -> (DateTime<Local>, DateTime<Local>) {
     }
 }
 
-fn generate_filename() -> String {
-    let now = Local::now();
-    format!("{}.png", now.format("%Y%m%d%H%M%S"))
+fn generate_filename(timestamp: DateTime<Local>) -> String {
+    format!("{}.png", timestamp.format("%Y%m%d%H%M%S"))
 }
 
 fn generate_plot_title(parsed_query: Vec<Vec<String>>) -> String {
@@ -136,6 +135,15 @@ mod test {
     use chrono::Duration;
 
     use super::*;
+
+    #[test]
+    fn generate_filename_function_takes_datetime_and_generates_filename_based_on_time() {
+        let datetime = Local.with_ymd_and_hms(2023, 10, 16, 10, 6, 32).unwrap();
+
+        let filename = generate_filename(datetime);
+
+        assert_eq!(filename, "20231016100632.png".to_string());
+    }
 
     #[test]
     fn generate_plot_title_takes_all_elements_of_vector_and_returns_title() {
