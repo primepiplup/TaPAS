@@ -67,10 +67,10 @@ fn handle_tags_and_create_datapoint(data: String, tags: Vec<String>) -> Datapoin
     for tag in &tags {
         let command: Vec<&str> = tag.split(':').collect();
         match command[0] {
-            "D" => date = parse_date(command),
-            "DATE" => date = parse_date(command),
-            "T" => time = parse_time(command),
-            "TIME" => time = parse_time(command),
+            "D" => date = parse_date(command, date),
+            "DATE" => date = parse_date(command, date),
+            "T" => time = parse_time(command, time),
+            "TIME" => time = parse_time(command, time),
             non_command => tag_collector.push(non_command.to_string()),
         }
     }
@@ -84,23 +84,23 @@ fn handle_tags_and_create_datapoint(data: String, tags: Vec<String>) -> Datapoin
     }
 }
 
-fn parse_date(command: Vec<&str>) -> NaiveDate {
+fn parse_date(command: Vec<&str>, fallback: NaiveDate) -> NaiveDate {
     if command.len() < 2 {
-        return Local::now().date_naive();
+        return fallback;
     };
     match NaiveDate::parse_from_str(command[1], "%Y-%m-%d") {
         Ok(date) => date,
-        Err(_) => Local::now().date_naive(),
+        Err(_) => fallback,
     }
 }
 
-fn parse_time(command: Vec<&str>) -> NaiveTime {
+fn parse_time(command: Vec<&str>, fallback: NaiveTime) -> NaiveTime {
     if command.len() < 2 {
-        return Local::now().time();
+        return fallback;
     };
     match NaiveTime::parse_from_str(command[1], "%H-%M-%S") {
         Ok(date) => date,
-        Err(_) => Local::now().time(),
+        Err(_) => fallback,
     }
 }
 
@@ -140,6 +140,13 @@ mod tests {
     use super::*;
 
     #[test]
+    fn get_data_from_text_will_return_empty_string_if_nothing_entered() {
+        let data = get_data_from("+");
+
+        assert_eq!(data, "");
+    }
+
+    #[test]
     fn using_d_tag_followed_by_date_returns_datapoint_with_datetime_of_said_date() {
         let expected = NaiveDate::from_ymd_opt(2022, 2, 10).unwrap();
 
@@ -173,6 +180,49 @@ mod tests {
         let datapoint = create_datapoint("Some data tagged with +TIME:12-34-56");
 
         assert_eq!(datapoint.get_datetime().time(), expected);
+    }
+
+    #[test]
+    fn parse_date_falls_back_on_given_date_if_no_string_to_parse() {
+        let command = vec!["DATE"];
+        let fallback = NaiveDate::from_ymd_opt(2022, 10, 15).unwrap();
+
+        let result = parse_date(command, fallback);
+
+        assert_eq!(result, fallback);
+    }
+
+    #[test]
+    fn parse_date_falls_back_on_given_date_if_parse_errors_out() {
+        let command = vec!["DATE", "certainly not a date"];
+        let fallback = NaiveDate::from_ymd_opt(2022, 10, 15).unwrap();
+
+        let result = parse_date(command, fallback);
+
+        assert_eq!(result, fallback);
+    }
+
+    #[test]
+    fn parse_time_falls_back_on_given_time_if_no_string_to_parse() {
+        let command = vec!["TIME"];
+        let fallback = NaiveTime::from_hms_opt(12, 34, 56).unwrap();
+
+        let result = parse_time(command, fallback);
+
+        assert_eq!(result, fallback);
+    }
+
+    #[test]
+    fn parse_time_falls_back_on_given_time_if_parse_errors_out() {
+        let command = vec![
+            "TIME",
+            "text that will cause the parse to error out for sure",
+        ];
+        let fallback = NaiveTime::from_hms_opt(12, 34, 56).unwrap();
+
+        let result = parse_time(command, fallback);
+
+        assert_eq!(result, fallback);
     }
 
     #[test]
