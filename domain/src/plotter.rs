@@ -4,6 +4,50 @@ use crate::datapoint::{create_datapoint, Datapoint};
 use chrono::{DateTime, Local, TimeZone};
 use plotters::prelude::*;
 
+struct PlotColors {
+    background: RGBColor,
+    textcolor: RGBColor,
+    highlight: RGBColor,
+    darklight: RGBColor,
+    labelcolor: ShapeStyle,
+}
+
+impl PlotColors {
+    fn new() -> PlotColors {
+        PlotColors {
+            background: RGBColor(12, 22, 24),
+            textcolor: RGBColor(209, 172, 0),
+            highlight: RGBColor(250, 244, 211),
+            darklight: RGBColor(60, 73, 76),
+            labelcolor: ShapeStyle {
+                color: RGBAColor(193, 41, 46, 1.0),
+                filled: true,
+                stroke_width: 2,
+            },
+        }
+    }
+
+    pub fn background(&self) -> &RGBColor {
+        &self.background
+    }
+
+    pub fn textcolor(&self) -> &RGBColor {
+        &self.textcolor
+    }
+
+    pub fn highlight(&self) -> &RGBColor {
+        &self.highlight
+    }
+
+    pub fn darklight(&self) -> &RGBColor {
+        &self.darklight
+    }
+
+    pub fn labelstyle(&self) -> &ShapeStyle {
+        &self.labelcolor
+    }
+}
+
 pub fn basic_plot(
     data: &Vec<Datapoint>,
     parsed_query: Vec<Vec<String>>,
@@ -23,11 +67,17 @@ pub fn basic_plot(
     let location: String = format!("generated/{}", filename);
     let plot_title: String = generate_plot_title(parsed_query);
 
+    let plot_colors = PlotColors::new();
     let root = BitMapBackend::new(&location, (640, 480)).into_drawing_area();
-    root.fill(&WHITE)?;
+    root.fill(plot_colors.background())?;
 
     let mut chart = ChartBuilder::on(&root)
-        .caption(plot_title, ("sans-serif", 35).into_font())
+        .caption(
+            plot_title,
+            ("sans-serif", 35)
+                .with_color(plot_colors.textcolor())
+                .into_text_style(&root),
+        )
         .margin(10)
         .x_label_area_size(30)
         .y_label_area_size(30)
@@ -35,11 +85,19 @@ pub fn basic_plot(
 
     chart
         .configure_mesh()
+        .label_style(plot_colors.highlight())
+        .axis_style(plot_colors.textcolor())
+        .bold_line_style(plot_colors.highlight())
+        .light_line_style(plot_colors.darklight())
         .x_label_formatter(&|datetime| format_datetime(datetime, as_date))
         .draw()?;
 
     chart
-        .draw_series(datapoints.iter().map(|coord| Circle::new(*coord, 5, &BLUE)))
+        .draw_series(
+            datapoints
+                .iter()
+                .map(|coord| Circle::new(*coord, 5, plot_colors.labelstyle().clone())),
+        )
         .unwrap();
 
     root.present()?;
