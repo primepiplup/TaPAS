@@ -1,14 +1,18 @@
 <style>
   nav {
-    background-color: darkgrey;
+    background-color: #0C1618;
     padding: 15px;
   }
   a {
-    background-color: black;
+    background-color: #004643;
     padding: 5px;
     border-radius: 30px;
-    border: 2px solid white;
-    color: white;
+    border: 2px solid #D1AC00;
+    color: #D1AC00;
+  }
+
+  :global(body) {
+    background-color: #0C1618;
   }
 </style>
 
