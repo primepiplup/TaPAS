@@ -23,6 +23,12 @@ struct Image {
     filename: String,
 }
 
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
+struct Tag {
+    tag: String,
+}
+
 #[post("/input", format = "application/json", data = "<form_input>")]
 fn input(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> () {
     datastorage.add_datapoint(form_input.value);
@@ -41,10 +47,20 @@ fn plot(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> Json<Imag
     Json(Image { filename })
 }
 
+#[get("/tags")]
+fn tags(datastorage: &State<Datastore>) -> Json<Vec<Tag>> {
+    let tags = datastorage.retrieve_taglist();
+    let mut tag_objects: Vec<Tag> = Vec::new();
+    for tag in tags {
+        tag_objects.push(Tag { tag });
+    }
+    Json(tag_objects)
+}
+
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .mount("/api", routes![input, query, plot])
+        .mount("/api", routes![input, query, plot, tags])
         .mount("/plot", FileServer::from(relative!("../generated")))
         .manage(Datastore::new())
 }
