@@ -18,14 +18,14 @@
 
 </script>
 
-<div>
-  <p>Input a query to request a plot</p>
-  <input type="text" class="center" bind:value on:keydown={e => { if(e.key == "Enter") {sendPlotQuery()} } }>
+<div class="inputfield">
+  <p class="text">Input a query to request a plot</p>
+  <input type="text" class="form" bind:value on:keydown={e => { if(e.key == "Enter") {sendPlotQuery()} } }>
   <br/>
-  <button on:click={ sendPlotQuery } class="center">Send Query</button>
+  <button on:click={ sendPlotQuery } class="request">Send Query</button>
 </div>
 
-<div>
+<div class="image">
   {#if image}
    <img src={"/plot/" + image.filename} alt="cool plot" />
   {/if}
@@ -41,11 +41,34 @@
     width: 25%;
   }
 
-  .data {
+  .inputfield {
+    background: linear-gradient(180deg, #285a58 0%, #004643 50%);
+    border: 2px solid #D1AC00;
+    padding: 20px;  }
+
+  .text {
+    color: #D1AC00;
     font-weight: bold;
   }
 
-  .tag {
-    font-style: italic;
+  .form {
+    background-color: #0C1618;
+    border: 2px solid #D1AC00;
+    text-align: center;
+    color: #FAF4D3;
+    font-weight: bold;
   }
+
+  .request {
+    color: #D1AC00;
+    background-color: #004643;
+    border-top: 0px solid #D1AC00;
+    border: 2px solid #D1AC00;
+    font-weight: bold;
+  }
+
+  .request:hover {
+    color: #FAF4D3;
+  }
+
 </style>
