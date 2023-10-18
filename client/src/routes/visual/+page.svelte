@@ -1,6 +1,8 @@
 <script lang='ts'>
+  import Error from "../error.svelte";
   let image: {filename: string};
-  let value: string;
+  let value: string = "";
+  let status: number;
 
   async function sendPlotQuery() {
     let requestBody = {
@@ -13,6 +15,7 @@
       },
       body: JSON.stringify(requestBody),
     });
+    status = response.status;
     image = await response.json();
   };
 
@@ -30,6 +33,19 @@
    <img src={"/plot/" + image.filename} alt="cool plot" />
   {/if}
 </div>
+
+{#if status == undefined}
+  <br/>
+{:else if status == 200}
+  <p class="text">Request handled succesfully.</p>
+{:else if status >= 400}
+  <Error errorText="Incorrect input was given."/>
+{:else if status >= 500}
+  <Error errorText="The server experienced an error." />
+{:else}
+  <Error errorText="Unknown error occurred." />
+{/if}
+
 
 <style>
   div {

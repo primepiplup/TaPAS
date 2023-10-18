@@ -1,7 +1,9 @@
 <script lang='ts'>
   import Result from "./result.svelte";
+  import Error from "../error.svelte";
   let datapoints: {timestamp: string, data: string, tags: string[]}[];
-  let value: string;
+  let value: string = "";
+  let status: number;
 
   async function sendQuery() {
     let requestBody = {
@@ -14,6 +16,7 @@
       },
       body: JSON.stringify(requestBody),
     });
+    status = response.status;
     datapoints = await response.json();
   };
 
@@ -37,6 +40,18 @@
     {/if}
   </div>
 </div>
+
+{#if status == undefined}
+  <br/>
+{:else if status == 200}
+  <p class="text">Request handled succesfully.</p>
+{:else if status >= 400}
+  <Error errorText="Incorrect input was given."/>
+{:else if status >= 500}
+  <Error errorText="The server experienced an error." />
+{:else}
+  <Error errorText="Unknown error occurred." />
+{/if}
 
 <style>
   .container {
