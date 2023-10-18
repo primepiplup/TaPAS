@@ -3,17 +3,20 @@ use std::sync::Mutex;
 
 pub struct Datastore {
     datapoints: Mutex<Vec<Datapoint>>,
+    tags: Mutex<Vec<String>>,
 }
 
 impl Datastore {
     pub fn new() -> Datastore {
         Datastore {
             datapoints: Mutex::new(Vec::new()),
+            tags: Mutex::new(Vec::new()),
         }
     }
 
     pub fn add_datapoint(&self, input: &str) -> () {
         let datapoint = create_datapoint(input);
+        self.append_tags(datapoint.get_tags());
         let mut lock = self.datapoints.lock().expect("mutex holder crashed");
         for i in 0..lock.len() {
             if lock[i].get_datetime() > datapoint.get_datetime() {
@@ -26,6 +29,11 @@ impl Datastore {
 
     pub fn retrieve_datapoints(&self) -> Vec<Datapoint> {
         let lock = self.datapoints.lock().expect("mutex holder crashed");
+        lock.clone()
+    }
+
+    pub fn retrieve_taglist(&self) -> Vec<String> {
+        let lock = self.tags.lock().expect("Mutex holder crashed...");
         lock.clone()
     }
 
@@ -47,6 +55,15 @@ impl Datastore {
             }
         }
         apply_query_commands(collector, parsed)
+    }
+
+    fn append_tags(&self, tags: &Vec<String>) -> () {
+        let mut lock = self.tags.lock().expect("Mutex holder crashed...");
+        for tag in tags {
+            if !lock.contains(tag) {
+                lock.push(tag.clone());
+            }
+        }
     }
 }
 
@@ -90,6 +107,46 @@ mod tests {
     use crate::datapoint;
 
     use super::*;
+
+    #[test]
+    fn append_tags_does_not_append_tags_already_included() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("80kg +something");
+        datastore.add_datapoint("stuff +tag");
+
+        datastore.append_tags(&vec![
+            "something".to_string(),
+            "tag".to_string(),
+            "weight".to_string(),
+        ]);
+
+        assert_eq!(
+            datastore.retrieve_taglist(),
+            vec![
+                "something".to_string(),
+                "tag".to_string(),
+                "weight".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn append_tags_function_appends_tags_to_datastore_tag_list() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("80kg +weight ");
+        datastore.add_datapoint("stuff +tag");
+
+        datastore.append_tags(&vec!["something".to_string()]);
+
+        assert_eq!(
+            datastore.retrieve_taglist(),
+            vec![
+                "weight".to_string(),
+                "tag".to_string(),
+                "something".to_string()
+            ]
+        );
+    }
 
     #[test]
     fn data_added_tagged_before_current_datetime_is_inserted_in_appropriate_location() {
