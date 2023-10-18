@@ -5,9 +5,12 @@
   import Error from "./error.svelte";
 
   let status: number;
-  let value: string;
+  let value: string = "";
   let tags: { tag: string }[];
   let tagsToApply: string[];
+  let date: string;
+  let timeRaw: string;
+  $: time = parseTime(timeRaw);
 
   tagList.subscribe((tags) => {
     tagsToApply = tags;
@@ -41,7 +44,22 @@
     for(let i = 0; i < tagsToApply.length; i++) {
       text += "+" + tagsToApply[i];
     }
+    if(date) {
+      text += "+DATE:" + date;
+    }
+    if(time) {
+      text += "+TIME:" + time;
+    }
     return text;
+  }
+
+  function parseTime(timeRaw: string): string | undefined {
+    if(timeRaw) {
+      let time = timeRaw.replaceAll(":", "-");
+      return time;
+    } else {
+      return undefined;
+    }
   }
 
   onMount(getTags);
@@ -50,12 +68,21 @@
 
 <div class="inputfield">
   <p class="text">Please provide some input</p>
-  <input type="text" class="form" bind:value on:keydown={e => { if(e.key == "Enter") {sendInput()} } }> 
+  <input type="text" class="form" bind:value on:keydown={e => { if(e.key == "Enter") {sendInput()} } }>
   {#if tagsToApply}
     {#each tagsToApply as tagToApply}
       <span class="tag">+{tagToApply} </span>
     {/each}
   {/if}
+  {#if date}
+    <span class="tag">+DATE:{date}</span>
+  {/if}
+  {#if time}
+    <span class="tag">+TIME:{time}</span>
+  {/if}
+  <br/>
+  <input type="date" class="datetime" bind:value={date}/>
+  <input type="time" class="datetime" bind:value={timeRaw} step="1"/>
   <br/>
   <button on:click={ sendInput } class="request">Send Input</button>
   <div class="tagcontainer">
@@ -65,26 +92,26 @@
       {/each}
     {/if}
   </div>
-  </div>
+</div>
 
 
 
-{#if status == 200}
+{#if status == undefined}
+  <br/>
+{:else if status == 200}
   <p class="text">Request handled succesfully.</p>
-{/if}
-
-{#if status >= 400}
+{:else if status >= 400}
   <Error errorText="Incorrect input was given."/>
+{:else if status >= 500}
+  <Error errorText="The server experienced an error." />
+{:else}
+  <Error errorText="Unknown error occurred." />
 {/if}
 
 <style>
   div {
     padding-top: 1em;
     text-align: center;
-  }
-
-  input {
-    width: 50%;
   }
 
   .tagcontainer {
@@ -99,6 +126,18 @@
     text-align: center;
     color: #FAF4D3;
     font-weight: bold;
+    padding: 5px;
+    width: 50%;
+  }
+
+  .datetime {
+    background-color: #0C1618;
+    border: 2px solid #D1AC00;
+    text-align: center;
+    color: #FAF4D3;
+    font-weight: bold;
+    margin-top: 5px;
+    margin-bottom: 5px;
   }
 
   .request {
@@ -107,6 +146,7 @@
     border-top: 0px solid #D1AC00;
     border: 2px solid #D1AC00;
     font-weight: bold;
+    padding: 5px;
   }
 
   .request:hover {
