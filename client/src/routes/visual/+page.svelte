@@ -5,10 +5,11 @@
   let status: number;
   let doRegression: boolean = false;
 
+
   async function sendPlotQuery() {
     let requestBody = {
       fieldInput: value ? value : "",
-      withRegression: doRegression
+      withRegression: doRegression,
     };
     let response = await fetch("api/plot", {
       method: "POST",
@@ -30,6 +31,7 @@
   <button on:click={ sendPlotQuery } class="request">Send Query</button>
   <input type="checkbox" id="regression" name="regression" bind:checked={doRegression} />
   <label for="regression">With linear regression?</label>
+  <br/>
 </div>
 
 <div class="image">
