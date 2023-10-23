@@ -19,7 +19,7 @@ pub fn linear_regression(
 
     println!("a: {}, b: {}", a, b);
     println!(
-        "xtrans: {}, xscale: {}, yrans: {}, yscale: {}",
+        "xtrans: {}, xscale: {}, ytrans: {}, yscale: {}",
         xtrans, xscale, ytrans, yscale
     );
 
@@ -177,6 +177,14 @@ mod test {
     use super::*;
 
     #[test]
+    fn fill_in_linear_equation_returns_a_functional_linear_equation_function() {
+        let line_function = fill_in_linear_equation(2.0, 1.0);
+
+        assert_eq!(line_function(2.0), 5.0);
+        assert_eq!(line_function(5.5), 12.0);
+    }
+
+    #[test]
     fn linear_regression_provides_an_accurate_fit_for_datapoints_on_a_line() {
         let raw_data = vec![
             (
@@ -253,12 +261,12 @@ mod test {
     fn data_processing_transforms_x_axis_to_be_based_on_zero_and_normalized_to_max() {
         let raw_data = vec![
             (
-                Local.with_ymd_and_hms(2023, 10, 15, 15, 20, 20).unwrap(),
-                1.0,
-            ),
-            (
                 Local.with_ymd_and_hms(2023, 10, 15, 15, 20, 21).unwrap(),
                 2.0,
+            ),
+            (
+                Local.with_ymd_and_hms(2023, 10, 15, 15, 20, 20).unwrap(),
+                1.0,
             ),
             (
                 Local.with_ymd_and_hms(2023, 10, 15, 15, 20, 24).unwrap(),
@@ -268,8 +276,8 @@ mod test {
 
         let (data, _) = date_data_processing(raw_data);
 
-        assert_eq!(data[0].0, 0.0);
-        assert_eq!(data[1].0, 0.25);
+        assert_eq!(data[0].0, 0.25);
+        assert_eq!(data[1].0, 0.0);
         assert_eq!(data[2].0, 1.0);
     }
 
