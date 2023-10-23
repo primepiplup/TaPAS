@@ -109,6 +109,37 @@ mod tests {
     use super::*;
 
     #[test]
+    fn empty_query_returns_all_datapoints_from_store() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("cool information +tag");
+        datastore.add_datapoint("More cool information +tag");
+
+        let (datapoints, _) = datastore.query("+");
+
+        assert_eq!("cool information", datapoints[0].get_data());
+        assert_eq!("More cool information", datapoints[1].get_data());
+    }
+
+    #[test]
+    fn apply_command_with_unknown_command_returns_full_datapoint_vector() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("cool information +tag");
+        datastore.add_datapoint("More cool information +tag");
+        let datapoints = datastore.retrieve_datapoints();
+
+        let datapoints_after_command = apply_command(datapoints.clone(), "Unknown".to_string());
+
+        assert_eq!(
+            datapoints[0].get_data(),
+            datapoints_after_command[0].get_data()
+        );
+        assert_eq!(
+            datapoints[1].get_data(),
+            datapoints_after_command[1].get_data()
+        );
+    }
+
+    #[test]
     fn append_tags_does_not_append_tags_already_included() {
         let datastore = Datastore::new();
         datastore.add_datapoint("80kg +something");
