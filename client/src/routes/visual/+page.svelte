@@ -3,12 +3,14 @@
   let image: {filename: string};
   let value: string = "";
   let status: number;
+  let doRegression: boolean = false;
 
   async function sendPlotQuery() {
+    let apiPath = doRegression ? "plot-regression" : "plot";
     let requestBody = {
       fieldInput: value ? value : ""
     };
-    let response = await fetch("api/plot", {
+    let response = await fetch("api/" + apiPath, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -26,6 +28,8 @@
   <input type="text" class="form" bind:value on:keydown={e => { if(e.key == "Enter") {sendPlotQuery()} } }>
   <br/>
   <button on:click={ sendPlotQuery } class="request">Send Query</button>
+  <input type="checkbox" id="regression" name="regression" bind:checked={doRegression} />
+  <label for="regression">With linear regression?</label>
 </div>
 
 <div class="image">
@@ -53,10 +57,6 @@
     text-align: center;
   }
 
-  input {
-    width: 25%;
-  }
-
   .inputfield {
     background: linear-gradient(180deg, #285a58 0%, #004643 50%);
     border: 2px solid #D1AC00;
@@ -67,11 +67,17 @@
     font-weight: bold;
   }
 
+  label {
+    color: #D1AC00;
+    font-style: italic;
+  }
+
   .form {
     background-color: #0C1618;
     border: 2px solid #D1AC00;
     text-align: center;
     color: #FAF4D3;
+    width: 25%;
     font-weight: bold;
   }
 
@@ -81,6 +87,7 @@
     border-top: 0px solid #D1AC00;
     border: 2px solid #D1AC00;
     font-weight: bold;
+    padding: 5px;
   }
 
   .request:hover {
