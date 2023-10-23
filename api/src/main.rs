@@ -4,6 +4,8 @@ use crate::datapoint_dto::{dto_vec_from, DatapointDTO};
 use domain::datastore::Datastore;
 use domain::plotter::{basic_plot, regression_plot};
 use rocket::fs::{relative, FileServer};
+use rocket::http::Status;
+use rocket::response::status;
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket::State;
 
@@ -41,17 +43,34 @@ fn query(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> Json<Vec
 }
 
 #[post("/plot", format = "application/json", data = "<form_input>")]
-fn plot(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> Json<Image> {
+fn plot(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> status::Custom<Json<Image>> {
     let (datapoints, parsed) = datastorage.query(form_input.value);
-    let filename = basic_plot(&datapoints, parsed).expect("Plot broke...");
-    Json(Image { filename })
+    match basic_plot(&datapoints, parsed) {
+        Ok(filename) => status::Custom(Status::Ok, Json(Image { filename })),
+        Err(err) => status::Custom(
+            Status::InternalServerError,
+            Json(Image {
+                filename: "nodice".to_string(),
+            }),
+        ),
+    }
 }
 
 #[post("/plot-regression", format = "application/json", data = "<form_input>")]
-fn plot_regression(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> Json<Image> {
+fn plot_regression(
+    form_input: Json<Form<'_>>,
+    datastorage: &State<Datastore>,
+) -> status::Custom<Json<Image>> {
     let (datapoints, parsed) = datastorage.query(form_input.value);
-    let filename = regression_plot(&datapoints, parsed).expect("Plot broke...");
-    Json(Image { filename })
+    match regression_plot(&datapoints, parsed) {
+        Ok(filename) => status::Custom(Status::Ok, Json(Image { filename })),
+        Err(err) => status::Custom(
+            Status::InternalServerError,
+            Json(Image {
+                filename: "nodice".to_string(),
+            }),
+        ),
+    }
 }
 
 #[get("/tags")]
