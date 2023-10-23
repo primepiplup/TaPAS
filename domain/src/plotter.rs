@@ -1,3 +1,4 @@
+use crate::analysis::linear_regression;
 use crate::datapoint::{create_datapoint, Datapoint};
 use crate::plotcolors::PlotColors;
 use chrono::{DateTime, Local, TimeZone};
@@ -15,9 +16,9 @@ pub fn basic_plot(
 
     let datetimes = get_datetimes(data);
     let (lower_date, upper_date): (DateTime<Local>, DateTime<Local>) = get_daterange(data);
-    let (lower_num, upper_num): (f32, f32) = apply_margin(get_upper_lower(&num_data));
+    let (lower_num, upper_num): (f64, f64) = apply_margin(get_upper_lower(&num_data));
     let as_date: bool = plot_as_dates((lower_date, upper_date));
-    let datapoints: Vec<(DateTime<Local>, f32)> = datetimes.into_iter().zip(num_data).collect();
+    let datapoints: Vec<(DateTime<Local>, f64)> = datetimes.into_iter().zip(num_data).collect();
 
     let filename = generate_filename(Local::now());
     let location: String = format!("generated/{}", filename);
@@ -61,7 +62,74 @@ pub fn basic_plot(
     Ok(filename.to_owned())
 }
 
-fn get_numeric_data(data: &Vec<Datapoint>) -> Option<Vec<f32>> {
+pub fn regression_plot(
+    data: &Vec<Datapoint>,
+    parsed_query: Vec<Vec<String>>,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let num_data = match get_numeric_data(data) {
+        Some(result) => result,
+        None => return Err(Box::new(Error::new(std::io::ErrorKind::NotFound, "test"))),
+    };
+
+    let datetimes = get_datetimes(data);
+    let (lower_date, upper_date): (DateTime<Local>, DateTime<Local>) = get_daterange(data);
+    let (lower_num, upper_num): (f64, f64) = apply_margin(get_upper_lower(&num_data));
+    let as_date: bool = plot_as_dates((lower_date, upper_date));
+    let datapoints: Vec<(DateTime<Local>, f64)> = datetimes.into_iter().zip(num_data).collect();
+    let fitted_line = linear_regression(datapoints.clone(), 50);
+
+    let filename = generate_filename(Local::now());
+    let location: String = format!("generated/{}", filename);
+    let plot_title: String = generate_plot_title(parsed_query);
+
+    let plot_colors = PlotColors::new();
+    let root = BitMapBackend::new(&location, (640, 480)).into_drawing_area();
+    root.fill(plot_colors.background())?;
+
+    let mut chart = ChartBuilder::on(&root)
+        .caption(
+            plot_title,
+            ("sans-serif", 35)
+                .with_color(plot_colors.textcolor())
+                .into_text_style(&root),
+        )
+        .margin(10)
+        .x_label_area_size(30)
+        .y_label_area_size(30)
+        .build_cartesian_2d(lower_date..upper_date, lower_num..upper_num)?;
+
+    chart
+        .configure_mesh()
+        .label_style(plot_colors.highlight())
+        .axis_style(plot_colors.textcolor())
+        .bold_line_style(plot_colors.highlight())
+        .light_line_style(plot_colors.darklight())
+        .x_label_formatter(&|datetime| format_datetime(datetime, as_date))
+        .draw()?;
+
+    chart
+        .draw_series(
+            datapoints
+                .iter()
+                .map(|coord| Circle::new(*coord, 5, plot_colors.labelstyle().clone())),
+        )
+        .unwrap();
+
+    chart
+        .draw_series(LineSeries::new(
+            datapoints
+                .iter()
+                .map(|(datetime, _)| (*datetime, fitted_line(datetime.timestamp().as_f64()))),
+            &BLUE,
+        ))
+        .unwrap();
+
+    root.present()?;
+
+    Ok(filename.to_owned())
+}
+
+fn get_numeric_data(data: &Vec<Datapoint>) -> Option<Vec<f64>> {
     if data.len() < 1 {
         return None;
     }
@@ -139,7 +207,7 @@ fn get_upper_lower<T: Copy + PartialOrd>(points: &Vec<T>) -> (T, T) {
     (lower, upper)
 }
 
-fn apply_margin((lower, upper): (f32, f32)) -> (f32, f32) {
+fn apply_margin((lower, upper): (f64, f64)) -> (f64, f64) {
     let margin = (upper - lower) / 10.0;
     (lower - margin, upper + margin)
 }
@@ -274,7 +342,7 @@ mod test {
 
     #[test]
     fn get_upper_lower_returns_min_and_max_of_number_array() {
-        let numbers: Vec<f32> = Vec::from([5.0, 800.0, 50.0, 45.0, 3.0, 1101.0, 32.0]);
+        let numbers: Vec<f64> = Vec::from([5.0, 800.0, 50.0, 45.0, 3.0, 1101.0, 32.0]);
 
         let (lower, upper) = get_upper_lower(&numbers);
 
