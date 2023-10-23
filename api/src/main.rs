@@ -2,7 +2,7 @@ mod datapoint_dto;
 
 use crate::datapoint_dto::{dto_vec_from, DatapointDTO};
 use domain::datastore::Datastore;
-use domain::plotter::basic_plot;
+use domain::plotter::{basic_plot, regression_plot};
 use rocket::fs::{relative, FileServer};
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket::State;
@@ -47,6 +47,13 @@ fn plot(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> Json<Imag
     Json(Image { filename })
 }
 
+#[post("/plot-regression", format = "application/json", data = "<form_input>")]
+fn plot_regression(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> Json<Image> {
+    let (datapoints, parsed) = datastorage.query(form_input.value);
+    let filename = regression_plot(&datapoints, parsed).expect("Plot broke...");
+    Json(Image { filename })
+}
+
 #[get("/tags")]
 fn tags(datastorage: &State<Datastore>) -> Json<Vec<Tag>> {
     let tags = datastorage.retrieve_taglist();
@@ -60,7 +67,7 @@ fn tags(datastorage: &State<Datastore>) -> Json<Vec<Tag>> {
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .mount("/api", routes![input, query, plot, tags])
+        .mount("/api", routes![input, query, plot, tags, plot_regression])
         .mount("/plot", FileServer::from(relative!("../generated")))
         .manage(Datastore::new())
 }
