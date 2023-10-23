@@ -1,51 +1,81 @@
 use chrono::{DateTime, Local};
 use plotters::prelude::LogScalable;
 
-pub fn linear_regression(data: Vec<(f64, f64)>) -> Box<dyn Fn(f64) -> f64> {
+pub fn linear_regression(
+    data: Vec<(DateTime<Local>, f64)>,
+    steps: usize,
+) -> Box<dyn Fn(f64) -> f64> {
+    let (data, (xtrans, xscale, ytrans, yscale)) = date_data_processing(data);
+
     let mut b = average(&data.clone().into_iter().map(|(x, y)| y).collect());
     let mut a = 0.0;
-    let flat_line = fill_in_linear_equation(a, b);
-    let flat_s_squared = sum_of_squares(&data, flat_line);
 
-    Box::new(|x| linear_equation(0.5, x, 0.0))
+    let mut counter = 0;
+    while counter < steps {
+        counter += 1;
+        a = gradient_descent(&|a_optim, x| linear_equation(a_optim, x, b), a, &data);
+        b = gradient_descent(&|b_optim, x| linear_equation(a, x, b_optim), b, &data);
+    }
+
+    println!("a: {}, b: {}", a, b);
+    println!(
+        "xtrans: {}, xscale: {}, yrans: {}, yscale: {}",
+        xtrans, xscale, ytrans, yscale
+    );
+
+    // todo, scale and transform a and b to actually put the linear equation back into the right coordinate space
+    a *= yscale;
+    b *= yscale;
+
+    Box::new(move |x| linear_equation(a, (x - xtrans) / xscale, b + ytrans))
 }
 
-pub fn data_processing(
-    raw_data: Vec<(DateTime<Local>, f64)>,
-) -> (Vec<(f64, f64)>, (f64, f64, f64, f64)) {
-    let first_datetime = raw_data[0].0.timestamp().as_f64();
-    let last_datetime = raw_data[raw_data.len() - 1].0.timestamp().as_f64() - first_datetime;
-    let x_zeroed_normalized: Vec<(f64, f64)> = raw_data
-        .into_iter()
-        .map(|(datetime, number)| {
-            (
-                (datetime.timestamp().as_f64() - first_datetime) / last_datetime,
-                number,
-            )
-        })
-        .collect();
-
-    let mut ymin = 0.0;
-    let mut ymax = 0.0;
-    for (_, y) in x_zeroed_normalized.clone() {
+pub fn data_processing(raw_data: Vec<(f64, f64)>) -> (Vec<(f64, f64)>, (f64, f64, f64, f64)) {
+    /* returns (data, (x_translation, x_scaling, y_translation, y_scaling))*/
+    let mut xmin = raw_data[0].0;
+    let mut xmax = raw_data[0].0;
+    let mut ymin = raw_data[0].1;
+    let mut ymax = raw_data[0].1;
+    for (x, y) in raw_data.clone() {
         if ymin > y {
             ymin = y;
+        }
+
+        if xmin > x {
+            xmin = x;
         }
 
         if y > ymax {
             ymax = y;
         }
+
+        if x > xmax {
+            xmax = x;
+        }
     }
 
-    ymax = ymax - ymin;
+    let yscale = ymax - ymin;
+    let xscale = xmax - xmin;
 
     (
-        x_zeroed_normalized
+        raw_data
             .into_iter()
-            .map(|(datetime, number)| (datetime, (number - ymin) / ymax))
+            .map(|(x, y)| ((x - xmin) / xscale, (y - ymin) / yscale))
             .collect(),
-        (first_datetime, last_datetime, ymin, ymax),
+        (xmin, xscale, ymin, yscale),
     )
+}
+
+pub fn date_data_processing(
+    raw_data: Vec<(DateTime<Local>, f64)>,
+) -> (Vec<(f64, f64)>, (f64, f64, f64, f64)) {
+    /* returns (data, (x_translation, x_scaling, y_translation, y_scaling))*/
+    let numeric_data: Vec<(f64, f64)> = raw_data
+        .into_iter()
+        .map(|(datetime, number)| (datetime.timestamp().as_f64(), number))
+        .collect();
+
+    data_processing(numeric_data)
 }
 
 fn gradient_descent<'a, OF>(
@@ -147,6 +177,54 @@ mod test {
     use super::*;
 
     #[test]
+    fn linear_regression_provides_an_accurate_fit_for_datapoints_on_a_line() {
+        let raw_data = vec![
+            (
+                Local.with_ymd_and_hms(2023, 10, 15, 15, 20, 2).unwrap(),
+                2.0,
+            ),
+            (
+                Local.with_ymd_and_hms(2023, 10, 15, 15, 20, 4).unwrap(),
+                3.0,
+            ),
+            (
+                Local.with_ymd_and_hms(2023, 10, 15, 15, 20, 6).unwrap(),
+                4.0,
+            ),
+        ];
+
+        let fitted_line = linear_regression(raw_data, 10);
+
+        let res1 = fitted_line(
+            Local
+                .with_ymd_and_hms(2023, 10, 15, 15, 20, 2)
+                .unwrap()
+                .timestamp()
+                .as_f64(),
+        ) - 2.0;
+
+        let res2 = fitted_line(
+            Local
+                .with_ymd_and_hms(2023, 10, 15, 15, 20, 4)
+                .unwrap()
+                .timestamp()
+                .as_f64(),
+        ) - 3.0;
+
+        let res3 = fitted_line(
+            Local
+                .with_ymd_and_hms(2023, 10, 15, 15, 20, 6)
+                .unwrap()
+                .timestamp()
+                .as_f64(),
+        ) - 4.0;
+
+        assert!(res1 < 0.01 && res1 > -0.01);
+        assert!(res2 < 0.01 && res2 > -0.01);
+        assert!(res3 < 0.01 && res3 > -0.01);
+    }
+
+    #[test]
     fn gradient_descent_for_gradient_of_linear_datapoints_finds_correct_slope<'a>() {
         let data = vec![(2.0, 1.0), (5.0, 3.0)];
         let expected = 0.666;
@@ -188,11 +266,35 @@ mod test {
             ),
         ];
 
-        let (data, _) = data_processing(raw_data);
+        let (data, _) = date_data_processing(raw_data);
 
         assert_eq!(data[0].0, 0.0);
         assert_eq!(data[1].0, 0.25);
         assert_eq!(data[2].0, 1.0);
+    }
+
+    #[test]
+    fn data_processing_transforms_y_axis_to_be_based_on_zero_and_normalized_to_max() {
+        let raw_data = vec![
+            (
+                Local.with_ymd_and_hms(2023, 10, 15, 15, 20, 20).unwrap(),
+                1.0,
+            ),
+            (
+                Local.with_ymd_and_hms(2023, 10, 15, 15, 20, 21).unwrap(),
+                2.0,
+            ),
+            (
+                Local.with_ymd_and_hms(2023, 10, 15, 15, 20, 24).unwrap(),
+                5.0,
+            ),
+        ];
+
+        let (data, _) = date_data_processing(raw_data);
+
+        assert_eq!(data[0].1, 0.0);
+        assert_eq!(data[1].1, 0.25);
+        assert_eq!(data[2].1, 1.0);
     }
 
     #[test]
