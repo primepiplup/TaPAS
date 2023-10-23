@@ -33,7 +33,7 @@
 </div>
 
 <div class="image">
-  {#if image}
+  {#if image && status < 300}
    <img src={"/plot/" + image.filename} alt="cool plot" />
   {/if}
 </div>
