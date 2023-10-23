@@ -6,11 +6,11 @@
   let doRegression: boolean = false;
 
   async function sendPlotQuery() {
-    let apiPath = doRegression ? "plot-regression" : "plot";
     let requestBody = {
-      fieldInput: value ? value : ""
+      fieldInput: value ? value : "",
+      withRegression: doRegression
     };
-    let response = await fetch("api/" + apiPath, {
+    let response = await fetch("api/plot", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
