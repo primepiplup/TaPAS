@@ -1,6 +1,7 @@
 mod datapoint_dto;
 
 use crate::datapoint_dto::{dto_vec_from, DatapointDTO};
+use domain::analysis::linear_regression;
 use domain::datastore::Datastore;
 use domain::plotter::scatterplot;
 use rocket::fs::{relative, FileServer};
@@ -28,10 +29,27 @@ struct PlotRequest<'a> {
     with_regression: bool,
 }
 
+#[derive(Deserialize)]
+#[serde(crate = "rocket::serde")]
+struct PredictionForm<'a> {
+    #[serde(rename = "fieldInput")]
+    query: &'a str,
+    #[serde(rename = "targetGoal")]
+    goal: f64,
+}
+
 #[derive(Serialize)]
 #[serde(crate = "rocket::serde")]
 struct Image {
     filename: String,
+}
+
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
+struct Prediction {
+    prediction: f64,
+    #[serde(rename = "willIntercept")]
+    will_intercept: bool,
 }
 
 #[derive(Serialize)]
@@ -66,6 +84,33 @@ fn plot(
             }),
         ),
     }
+}
+
+#[post("/predict", format = "application/json", data = "<form_input>")]
+fn predict(
+    form_input: Json<PredictionForm<'_>>,
+    datastorage: &State<Datastore>,
+) -> status::Custom<Json<Prediction>> {
+    let (datapoints, _) = datastorage.query(form_input.query);
+    let data = datapoints
+        .into_iter()
+        .map(|datapoint| {
+            (
+                datapoint.get_datetime().to_owned(),
+                datapoint.get_as_numeric().unwrap(),
+            )
+        })
+        .collect();
+    let fit_line = linear_regression(data, 50); // I need the values of a and b to predict x values. Linear regression should also return these parameter values
+    let prediction = fit_line(form_input.goal); // intercept is inverse of linear function, x = (y - b) / a. Should make function to calculate intercept
+
+    status::Custom(
+        Status::Ok,
+        Json(Prediction {
+            prediction,
+            will_intercept: true, // Need to create a way to check whether an intercept will even occur beyond "now"
+        }),
+    )
 }
 
 #[get("/tags")]
