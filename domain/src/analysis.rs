@@ -1,13 +1,11 @@
+use crate::linearfunction::LinearFunction;
 use chrono::{DateTime, Local};
 use plotters::prelude::LogScalable;
 
-pub fn linear_regression(
-    data: Vec<(DateTime<Local>, f64)>,
-    steps: usize,
-) -> Box<dyn Fn(f64) -> f64> {
-    let (data, (xtrans, xscale, ytrans, yscale)) = date_data_processing(data);
+pub fn linear_regression(data: Vec<(DateTime<Local>, f64)>, steps: usize) -> LinearFunction {
+    let (data, transform) = date_data_processing(data);
 
-    let mut b = average(&data.clone().into_iter().map(|(x, y)| y).collect());
+    let mut b = average(&data.clone().into_iter().map(|(_, y)| y).collect());
     let mut a = 0.0;
 
     let mut counter = 0;
@@ -17,17 +15,7 @@ pub fn linear_regression(
         b = gradient_descent(&|b_optim, x| linear_equation(a, x, b_optim), b, &data);
     }
 
-    println!("a: {}, b: {}", a, b);
-    println!(
-        "xtrans: {}, xscale: {}, ytrans: {}, yscale: {}",
-        xtrans, xscale, ytrans, yscale
-    );
-
-    // todo, scale and transform a and b to actually put the linear equation back into the right coordinate space
-    a *= yscale;
-    b *= yscale;
-
-    Box::new(move |x| linear_equation(a, (x - xtrans) / xscale, b + ytrans))
+    LinearFunction::new(a, b).with_transform(transform)
 }
 
 pub fn data_processing(raw_data: Vec<(f64, f64)>) -> (Vec<(f64, f64)>, (f64, f64, f64, f64)) {
@@ -201,7 +189,8 @@ mod test {
             ),
         ];
 
-        let fitted_line = linear_regression(raw_data, 10);
+        let linear_function = linear_regression(raw_data, 10);
+        let fitted_line = linear_function.function();
 
         let res1 = fitted_line(
             Local
