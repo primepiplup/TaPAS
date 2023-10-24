@@ -4,6 +4,7 @@ use std::sync::Mutex;
 pub struct Datastore {
     datapoints: Mutex<Vec<Datapoint>>,
     tags: Mutex<Vec<String>>,
+    counter: Mutex<u64>,
 }
 
 impl Datastore {
@@ -11,20 +12,31 @@ impl Datastore {
         Datastore {
             datapoints: Mutex::new(Vec::new()),
             tags: Mutex::new(Vec::new()),
+            counter: Mutex::new(0),
         }
     }
 
-    pub fn add_datapoint(&self, input: &str) -> () {
-        let datapoint = create_datapoint(input);
+    pub fn add_datapoint(&self, input: &str) -> Datapoint {
+        let mut datapoint = create_datapoint(input);
         self.append_tags(datapoint.get_tags());
-        let mut lock = self.datapoints.lock().expect("mutex holder crashed");
-        for i in 0..lock.len() {
-            if lock[i].get_datetime() > datapoint.get_datetime() {
-                lock.insert(i, datapoint.clone());
-                return;
+        let counter = self.increment_counter();
+        datapoint.set_key(counter);
+        let mut datapoints = self.datapoints.lock().expect("mutex holder crashed");
+        if datapoints.len() > 0 {
+            let mut i = datapoints.len() - 1;
+            while datapoints[i].get_datetime() < datapoint.get_datetime() && i > 0 {
+                i -= 0;
             }
+            if datapoints[i].get_datetime() > datapoint.get_datetime() {
+                datapoints.insert(i, datapoint.clone());
+                return datapoint;
+            } else {
+                datapoints.push(datapoint.clone())
+            }
+        } else {
+            datapoints.push(datapoint.clone());
         }
-        lock.push(datapoint);
+        datapoint
     }
 
     pub fn retrieve_datapoints(&self) -> Vec<Datapoint> {
@@ -64,6 +76,12 @@ impl Datastore {
                 lock.push(tag.clone());
             }
         }
+    }
+
+    fn increment_counter(&self) -> u64 {
+        let mut counter = self.counter.lock().expect("counter holder crashed");
+        *counter += 1;
+        *counter
     }
 }
 

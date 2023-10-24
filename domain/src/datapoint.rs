@@ -7,6 +7,7 @@ pub struct Datapoint {
     datetime: DateTime<Local>,
     data: String,
     tags: Vec<String>,
+    key: u64,
 }
 
 impl Datapoint {
@@ -35,12 +36,17 @@ impl Datapoint {
             datetime: self.datetime,
             data: self.strip_non_numeric(),
             tags: self.tags,
+            key: self.key,
         }
     }
 
     pub fn get_as_numeric(&self) -> Result<f64, ParseFloatError> {
         let num = self.strip_non_numeric();
         num.parse()
+    }
+
+    pub fn set_key(&mut self, key: u64) -> () {
+        self.key = key;
     }
 
     fn strip_non_numeric(&self) -> String {
@@ -81,6 +87,7 @@ fn handle_tags_and_create_datapoint(data: String, tags: Vec<String>) -> Datapoin
         data,
         tags: tag_collector,
         datetime,
+        key: 0,
     }
 }
 
