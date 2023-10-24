@@ -58,7 +58,8 @@ pub fn scatterplot(
         .unwrap();
 
     if with_regression {
-        let fitted_line = linear_regression(datapoints.clone(), 50);
+        let linear_function = linear_regression(datapoints.clone(), 50);
+        let fitted_line = linear_function.function();
         chart
             .draw_series(LineSeries::new(
                 datapoints
