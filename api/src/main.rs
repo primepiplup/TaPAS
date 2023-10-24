@@ -1,6 +1,7 @@
 mod datapoint_dto;
 
 use crate::datapoint_dto::{dto_vec_from, DatapointDTO};
+use chrono::{Local, NaiveDateTime};
 use domain::analysis::linear_regression;
 use domain::datastore::Datastore;
 use domain::plotter::scatterplot;
@@ -47,7 +48,7 @@ struct Image {
 #[derive(Serialize)]
 #[serde(crate = "rocket::serde")]
 struct Prediction {
-    prediction: f64,
+    prediction: String,
     #[serde(rename = "willIntercept")]
     will_intercept: bool,
 }
@@ -101,14 +102,21 @@ fn predict(
             )
         })
         .collect();
-    let fit_line = linear_regression(data, 50); // I need the values of a and b to predict x values. Linear regression should also return these parameter values
-    let prediction = fit_line(form_input.goal); // intercept is inverse of linear function, x = (y - b) / a. Should make function to calculate intercept
+    let linear_function = linear_regression(data, 50);
+    let prediction: i64 = linear_function.apply_inverse(form_input.goal) as i64;
+    let predicted_datetime = NaiveDateTime::from_timestamp_opt(prediction, 0).unwrap();
+
+    let mut will_intercept = true;
+
+    if predicted_datetime < Local::now().naive_local() {
+        will_intercept = false;
+    }
 
     status::Custom(
         Status::Ok,
         Json(Prediction {
-            prediction,
-            will_intercept: true, // Need to create a way to check whether an intercept will even occur beyond "now"
+            prediction: predicted_datetime.format("%Y-%m-%d %H:%M:%S").to_string(),
+            will_intercept, // Need to create a way to check whether an intercept will even occur beyond "now"
         }),
     )
 }
@@ -126,7 +134,7 @@ fn tags(datastorage: &State<Datastore>) -> Json<Vec<Tag>> {
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .mount("/api", routes![input, query, plot, tags])
+        .mount("/api", routes![input, query, plot, tags, predict])
         .mount("/plot", FileServer::from(relative!("../generated")))
         .manage(Datastore::new())
 }
