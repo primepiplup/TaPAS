@@ -1,11 +1,12 @@
 <script lang='ts'>
   import Error from "../error.svelte";
-  let image: {filename: string};
+  let prediction: {prediction: string, willIntercept: boolean} | undefined;
   let value: string = "";
   let targetGoal: number;
   let status: number;
 
   async function sendPlotQuery() {
+    prediction = undefined;
     let requestBody = {
       fieldInput: value ? value : "",
       targetGoal: targetGoal ? targetGoal : 0,
@@ -18,7 +19,7 @@
       body: JSON.stringify(requestBody),
     });
     status = response.status;
-    image = await response.json();
+    prediction = await response.json();
   };
 
 </script>
@@ -34,11 +35,16 @@
   <button on:click={ sendPlotQuery } class="request">Send Request</button>
 </div>
 
-<div class="image">
-  {#if image && status < 300}
-   <img src={"/plot/" + image.filename} alt="cool plot" />
-  {/if}
-</div>
+{#if prediction && status < 300 && prediction.willIntercept}
+  <div class="prediction">
+    <p class="predict-text">You're expected to reach your goal on: </p>
+    <p class="predict-text">{prediction.prediction}</p>
+  </div>
+{:else if prediction && prediction.willIntercept == false}
+  <div class="prediction">
+    <p class="predict-text">The current trend will not reach the stated goal</p>
+  </div>
+{/if}
 
 {#if status == undefined}
   <br/>
@@ -72,6 +78,17 @@
   label {
     color: #D1AC00;
     font-style: italic;
+  }
+
+  .prediction {
+    background: linear-gradient(180deg, #285a58 0%, #004643 50%);
+    border: 2px solid #D1AC00;
+    padding: 20px;
+  }
+
+  .predict-text {
+    color: #D1AC00;
+    font-weight: bold;    
   }
 
   .form {
