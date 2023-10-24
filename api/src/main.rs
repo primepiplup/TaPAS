@@ -10,6 +10,7 @@ use rocket::http::Status;
 use rocket::response::status;
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket::State;
+use rocket_db_pools::{sqlx, Database};
 
 #[macro_use]
 extern crate rocket;
@@ -58,6 +59,10 @@ struct Prediction {
 struct Tag {
     tag: String,
 }
+
+#[derive(Database)]
+#[database("mysql_storage")]
+struct Storage(sqlx::MySqlPool);
 
 #[post("/input", format = "application/json", data = "<form_input>")]
 fn input(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> () {
