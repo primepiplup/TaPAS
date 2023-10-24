@@ -4,7 +4,6 @@ CREATE TABLE datapoints (
 	id INT AUTO_INCREMENT UNIQUE,
 	data varchar(255),
 	tags varchar(255),
-	datetime varchar(255),
-	datastore_key INT UNIQUE,
+	datetime INT,
 	PRIMARY KEY(id)
 )
