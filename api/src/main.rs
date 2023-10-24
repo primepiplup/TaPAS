@@ -142,4 +142,5 @@ fn rocket() -> _ {
         .mount("/api", routes![input, query, plot, tags, predict])
         .mount("/plot", FileServer::from(relative!("../generated")))
         .manage(Datastore::new())
+        .attach(Storage::init())
 }
