@@ -13,3 +13,6 @@ chrono = "0.4.31"
 rocket = "0.5.0-rc.3"
 features = ["json"]
 
+[dependencies.rocket_db_pools]
+version = "=0.1.0-rc.3"
+features = ["sqlx_mysql"]
