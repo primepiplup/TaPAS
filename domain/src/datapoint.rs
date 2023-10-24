@@ -38,7 +38,7 @@ impl Datapoint {
         }
     }
 
-    pub fn get_as_numeric(&self) -> Result<f32, ParseFloatError> {
+    pub fn get_as_numeric(&self) -> Result<f64, ParseFloatError> {
         let num = self.strip_non_numeric();
         num.parse()
     }

@@ -1,23 +1,24 @@
+use crate::analysis::linear_regression;
 use crate::datapoint::{create_datapoint, Datapoint};
 use crate::plotcolors::PlotColors;
 use chrono::{DateTime, Local, TimeZone};
 use plotters::prelude::*;
 use std::io::Error;
 
-pub fn basic_plot(
+pub fn scatterplot(
     data: &Vec<Datapoint>,
     parsed_query: Vec<Vec<String>>,
+    with_regression: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let num_data = match get_numeric_data(data) {
+    let (datetimes, num_data) = match get_numeric_data(data) {
         Some(result) => result,
         None => return Err(Box::new(Error::new(std::io::ErrorKind::NotFound, "test"))),
     };
 
-    let datetimes = get_datetimes(data);
-    let (lower_date, upper_date): (DateTime<Local>, DateTime<Local>) = get_daterange(data);
-    let (lower_num, upper_num): (f32, f32) = apply_margin(get_upper_lower(&num_data));
+    let (lower_date, upper_date): (DateTime<Local>, DateTime<Local>) = get_daterange(&datetimes);
+    let (lower_num, upper_num): (f64, f64) = apply_margin(get_upper_lower(&num_data));
     let as_date: bool = plot_as_dates((lower_date, upper_date));
-    let datapoints: Vec<(DateTime<Local>, f32)> = datetimes.into_iter().zip(num_data).collect();
+    let datapoints: Vec<(DateTime<Local>, f64)> = datetimes.into_iter().zip(num_data).collect();
 
     let filename = generate_filename(Local::now());
     let location: String = format!("generated/{}", filename);
@@ -56,26 +57,42 @@ pub fn basic_plot(
         )
         .unwrap();
 
+    if with_regression {
+        let linear_function = linear_regression(datapoints.clone(), 50);
+        let fitted_line = linear_function.function();
+        chart
+            .draw_series(LineSeries::new(
+                datapoints
+                    .iter()
+                    .map(|(datetime, _)| (*datetime, fitted_line(datetime.timestamp().as_f64()))),
+                &BLUE,
+            ))
+            .unwrap();
+    }
+
     root.present()?;
 
     Ok(filename.to_owned())
 }
 
-fn get_numeric_data(data: &Vec<Datapoint>) -> Option<Vec<f32>> {
+fn get_numeric_data(data: &Vec<Datapoint>) -> Option<(Vec<DateTime<Local>>, Vec<f64>)> {
     if data.len() < 1 {
         return None;
     }
 
-    let mut collector = Vec::new();
+    let mut number_collector = Vec::new();
+    let mut date_collector = Vec::new();
     for datapoint in data {
-        let num = match datapoint.get_as_numeric() {
-            Ok(num) => num,
-            Err(_) => return None,
+        match datapoint.get_as_numeric() {
+            Ok(num) => {
+                number_collector.push(num);
+                date_collector.push(datapoint.get_datetime().to_owned());
+            }
+            Err(_) => (),
         };
-        collector.push(num);
     }
 
-    Some(collector)
+    Some((date_collector, number_collector))
 }
 
 fn get_datetimes(data: &Vec<Datapoint>) -> Vec<DateTime<Local>> {
@@ -84,16 +101,13 @@ fn get_datetimes(data: &Vec<Datapoint>) -> Vec<DateTime<Local>> {
         .collect()
 }
 
-fn get_daterange(data: &Vec<Datapoint>) -> (DateTime<Local>, DateTime<Local>) {
+fn get_daterange(data: &Vec<DateTime<Local>>) -> (DateTime<Local>, DateTime<Local>) {
     if data.len() > 1 {
-        let lower = data[0].get_datetime().to_owned();
-        let upper = data[data.len() - 1].get_datetime().to_owned();
+        let lower = data[0];
+        let upper = data[data.len() - 1];
         (lower, upper)
     } else if data.len() == 1 {
-        (
-            data[0].get_datetime().to_owned(),
-            data[0].get_datetime().to_owned(),
-        )
+        (data[0], data[0])
     } else {
         let time = Local.with_ymd_and_hms(1999, 8, 26, 1, 2, 3).unwrap();
         (time, time)
@@ -139,7 +153,7 @@ fn get_upper_lower<T: Copy + PartialOrd>(points: &Vec<T>) -> (T, T) {
     (lower, upper)
 }
 
-fn apply_margin((lower, upper): (f32, f32)) -> (f32, f32) {
+fn apply_margin((lower, upper): (f64, f64)) -> (f64, f64) {
     let margin = (upper - lower) / 10.0;
     (lower - margin, upper + margin)
 }
@@ -219,7 +233,7 @@ mod test {
     fn empty_input_into_plot_returns_error() {
         let datapoints: Vec<Datapoint> = Vec::new();
 
-        let output = basic_plot(&datapoints, Vec::new());
+        let output = scatterplot(&datapoints, Vec::new(), false);
 
         assert_eq!(output.ok(), None);
     }
@@ -234,15 +248,27 @@ mod test {
     }
 
     #[test]
-    fn get_numeric_data_for_datapoints_without_numbers_returns_none() {
+    fn get_numeric_data_for_datapoints_without_numbers_returns_empty_vector_for_numbers() {
         let mut datapoints: Vec<Datapoint> = Vec::new();
         datapoints.push(create_datapoint("things we don't care about"));
         datapoints.push(create_datapoint("how was your day! "));
         datapoints.push(create_datapoint("whoa cool idea +million-dollar-idea!"));
 
-        let actual = get_numeric_data(&datapoints);
+        let (_, actual) = get_numeric_data(&datapoints).unwrap();
 
-        assert_eq!(actual, None);
+        assert_eq!(actual, Vec::new());
+    }
+
+    #[test]
+    fn get_numeric_data_for_datapoints_with_some_numbers_returns_only_numbers() {
+        let mut datapoints: Vec<Datapoint> = Vec::new();
+        datapoints.push(create_datapoint("things we don't care about"));
+        datapoints.push(create_datapoint("how was your day! "));
+        datapoints.push(create_datapoint("40 dollas idea +million-dollar-idea!"));
+
+        let (_, actual) = get_numeric_data(&datapoints).unwrap();
+
+        assert_eq!(actual, Vec::from([40.0]));
     }
 
     #[test]
@@ -253,7 +279,7 @@ mod test {
         datapoints.push(create_datapoint("20loc written today +work"));
         let expected = Vec::from([30.4, 4.0, 20.0]);
 
-        let actual = get_numeric_data(&datapoints).unwrap();
+        let (_, actual) = get_numeric_data(&datapoints).unwrap();
 
         for i in 0..expected.len() {
             assert_eq!(actual[i], expected[i]);
@@ -267,14 +293,14 @@ mod test {
         datapoints.push(create_datapoint("4 reps +reps"));
         datapoints.push(create_datapoint("20loc written today +work"));
 
-        let actual = get_numeric_data(&datapoints).unwrap();
+        let (_, actual) = get_numeric_data(&datapoints).unwrap();
 
         assert_eq!(actual.len(), 3);
     }
 
     #[test]
     fn get_upper_lower_returns_min_and_max_of_number_array() {
-        let numbers: Vec<f32> = Vec::from([5.0, 800.0, 50.0, 45.0, 3.0, 1101.0, 32.0]);
+        let numbers: Vec<f64> = Vec::from([5.0, 800.0, 50.0, 45.0, 3.0, 1101.0, 32.0]);
 
         let (lower, upper) = get_upper_lower(&numbers);
 
@@ -284,12 +310,16 @@ mod test {
 
     #[test]
     fn get_daterange_returns_first_and_last_date_for_two_or_more_datapoints() {
-        let mut datapoints: Vec<Datapoint> = Vec::new();
-        datapoints.push(create_datapoint("stuff"));
-        datapoints.push(create_datapoint("more stuff"));
-        datapoints.push(create_datapoint("even more stuff"));
-        let expected_lower = datapoints[0].get_datetime().to_owned();
-        let expected_upper = datapoints[2].get_datetime().to_owned();
+        let mut datapoints: Vec<DateTime<Local>> = Vec::new();
+        datapoints.push(create_datapoint("stuff").get_datetime().to_owned());
+        datapoints.push(create_datapoint("more stuff").get_datetime().to_owned());
+        datapoints.push(
+            create_datapoint("even more stuff")
+                .get_datetime()
+                .to_owned(),
+        );
+        let expected_lower = datapoints[0];
+        let expected_upper = datapoints[2];
 
         let (lower, upper) = get_daterange(&datapoints);
 
@@ -313,9 +343,9 @@ mod test {
 
     #[test]
     fn get_daterange_returns_same_date_for_single_datapoint() {
-        let mut datapoints: Vec<Datapoint> = Vec::new();
-        datapoints.push(create_datapoint("stuff"));
-        let expected = datapoints[0].get_datetime().to_owned();
+        let mut datapoints: Vec<DateTime<Local>> = Vec::new();
+        datapoints.push(create_datapoint("stuff").get_datetime().to_owned());
+        let expected = datapoints[0];
 
         let (lower, upper) = get_daterange(&datapoints);
 

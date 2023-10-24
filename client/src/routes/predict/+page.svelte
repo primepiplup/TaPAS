@@ -1,17 +1,17 @@
 <script lang='ts'>
   import Error from "../error.svelte";
-  let image: {filename: string};
+  let prediction: {prediction: string, willIntercept: boolean} | undefined;
   let value: string = "";
+  let targetGoal: number;
   let status: number;
-  let doRegression: boolean = false;
-
 
   async function sendPlotQuery() {
+    prediction = undefined;
     let requestBody = {
       fieldInput: value ? value : "",
-      withRegression: doRegression,
+      targetGoal: targetGoal ? targetGoal : 0,
     };
-    let response = await fetch("api/plot", {
+    let response = await fetch("api/predict", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -19,26 +19,32 @@
       body: JSON.stringify(requestBody),
     });
     status = response.status;
-    image = await response.json();
+    prediction = await response.json();
   };
 
 </script>
 
 <div class="inputfield">
-  <p class="text">Input a query to request a plot</p>
+  <p class="text">Input a query for which to estimate a future value</p>
+  <span class="text">Query/Tag: </span>
   <input type="text" class="form" bind:value on:keydown={e => { if(e.key == "Enter") {sendPlotQuery()} } }>
   <br/>
-  <button on:click={ sendPlotQuery } class="request">Send Query</button>
-  <input type="checkbox" id="regression" name="regression" bind:checked={doRegression} />
-  <label for="regression">With linear regression?</label>
+  <span class="text">Goal value: </span>
+  <input type="number" class="form" bind:value={targetGoal} />
   <br/>
+  <button on:click={ sendPlotQuery } class="request">Send Request</button>
 </div>
 
-<div class="image">
-  {#if image && status < 300}
-   <img src={"/plot/" + image.filename} alt="cool plot" />
-  {/if}
-</div>
+{#if prediction && status < 300 && prediction.willIntercept}
+  <div class="prediction">
+    <p class="predict-text">You're expected to reach your goal on: </p>
+    <p class="predict-text">{prediction.prediction}</p>
+  </div>
+{:else if prediction && prediction.willIntercept == false}
+  <div class="prediction">
+    <p class="predict-text">The current trend will not reach the stated goal</p>
+  </div>
+{/if}
 
 {#if status == undefined}
   <br/>
@@ -72,6 +78,17 @@
   label {
     color: #D1AC00;
     font-style: italic;
+  }
+
+  .prediction {
+    background: linear-gradient(180deg, #285a58 0%, #004643 50%);
+    border: 2px solid #D1AC00;
+    padding: 20px;
+  }
+
+  .predict-text {
+    color: #D1AC00;
+    font-weight: bold;    
   }
 
   .form {
