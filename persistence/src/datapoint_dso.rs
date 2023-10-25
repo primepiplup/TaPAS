@@ -1,7 +1,7 @@
 use chrono::prelude::*;
 use domain::datapoint::Datapoint;
 
-struct DatapointDSO {
+pub struct DatapointDSO {
     datetime: i64,
     data: String,
     tags: Vec<String>,
@@ -11,6 +11,26 @@ struct DatapointDSO {
 impl DatapointDSO {
     pub fn vec_into<U, T: Into<U>>(vec: Vec<T>) -> Vec<U> {
         vec.into_iter().map(|elem| elem.into()).collect()
+    }
+
+    pub fn get_datetime(&self) -> i64 {
+        self.datetime
+    }
+
+    pub fn get_data(&self) -> String {
+        self.data.clone()
+    }
+
+    pub fn get_tags(&self) -> Vec<String> {
+        self.tags.clone()
+    }
+
+    pub fn get_key(&self) -> u64 {
+        self.key
+    }
+
+    pub fn get_stringified_tags(&self) -> String {
+        self.tags.join("_")
     }
 }
 
