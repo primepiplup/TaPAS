@@ -145,6 +145,30 @@ mod tests {
     use super::*;
 
     #[test]
+    fn from_a_vector_of_datapoints_a_datastore_is_born() {
+        let mut datapoints = Vec::new();
+        datapoints.push(datapoint::create_datapoint("some stuff +tag"));
+        datapoints.push(datapoint::create_datapoint("more stuff +another +stuff"));
+        datapoints.push(datapoint::create_datapoint("whatever +whatever +tag"));
+
+        let datastore = Datastore::from(datapoints.clone());
+
+        assert_eq!(datastore.datapoints.lock().unwrap()[0], datapoints[0]);
+        assert_eq!(datastore.datapoints.lock().unwrap()[1], datapoints[1]);
+        assert_eq!(datastore.datapoints.lock().unwrap()[2], datapoints[2]);
+        assert_eq!(
+            *datastore.tags.lock().unwrap(),
+            vec![
+                "tag".to_string(),
+                "another".to_string(),
+                "stuff".to_string(),
+                "whatever".to_string()
+            ]
+        );
+        assert_eq!(*datastore.counter.lock().unwrap(), 3);
+    }
+
+    #[test]
     fn empty_query_returns_all_datapoints_from_store() {
         let datastore = Datastore::new();
         datastore.add_datapoint("cool information +tag");
