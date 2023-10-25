@@ -2,7 +2,7 @@ use std::num::ParseFloatError;
 
 use chrono::prelude::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Datapoint {
     datetime: DateTime<Local>,
     data: String,
