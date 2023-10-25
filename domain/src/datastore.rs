@@ -88,6 +88,21 @@ impl Datastore {
     }
 }
 
+impl From<Vec<Datapoint>> for Datastore {
+    fn from(datapoints: Vec<Datapoint>) -> Datastore {
+        let datastore = Datastore {
+            datapoints: Mutex::new(datapoints.clone()),
+            tags: Mutex::new(Vec::new()),
+            counter: Mutex::new(0),
+        };
+        for datapoint in datapoints {
+            datastore.append_tags(datapoint.get_tags());
+            datastore.increment_counter();
+        }
+        return datastore;
+    }
+}
+
 fn query_parser(query: &str) -> Vec<Vec<String>> {
     let plus_replaced = query.trim().replace("+", " ");
     plus_replaced
