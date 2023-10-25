@@ -17,26 +17,29 @@ impl Datastore {
     }
 
     pub fn add_datapoint(&self, input: &str) -> Datapoint {
-        let mut datapoint = create_datapoint(input);
-        self.append_tags(datapoint.get_tags());
+        let mut new_datapoint = create_datapoint(input);
+        self.append_tags(new_datapoint.get_tags());
         let counter = self.increment_counter();
-        datapoint.set_key(counter);
-        let mut datapoints = self.datapoints.lock().expect("mutex holder crashed");
-        if datapoints.len() > 0 {
-            let mut i = datapoints.len() - 1;
-            while datapoints[i].get_datetime() < datapoint.get_datetime() && i > 0 {
-                i -= 0;
-            }
-            if datapoints[i].get_datetime() > datapoint.get_datetime() {
-                datapoints.insert(i, datapoint.clone());
-                return datapoint;
-            } else {
-                datapoints.push(datapoint.clone())
-            }
+        new_datapoint.set_key(counter);
+        let mut old_datapoints = self.datapoints.lock().expect("mutex holder crashed");
+
+        let length = old_datapoints.len();
+
+        if length == 0 {
+            old_datapoints.push(new_datapoint.clone());
+            return new_datapoint;
         } else {
-            datapoints.push(datapoint.clone());
+            let mut check_position = length;
+            while check_position > 0 {
+                check_position -= 1;
+                if old_datapoints[check_position].get_datetime() < new_datapoint.get_datetime() {
+                    old_datapoints.insert(check_position + 1, new_datapoint.clone());
+                    return new_datapoint;
+                }
+            }
+            old_datapoints.insert(0, new_datapoint.clone());
+            return new_datapoint;
         }
-        datapoint
     }
 
     pub fn retrieve_datapoints(&self) -> Vec<Datapoint> {
@@ -209,12 +212,38 @@ mod tests {
     }
 
     #[test]
+    fn data_added_tagged_at_various_times_are_added_in_the_expected_locations() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("80kg +weight +DATE:2023-10-3");
+        datastore.add_datapoint("81kg +weight +DATE:2023-10-2");
+        datastore.add_datapoint("79kg +weight +DATE:2023-10-1");
+        datastore.add_datapoint("83kg +weight +DATE:2023-10-5");
+        datastore.add_datapoint("82kg +weight +DATE:2023-10-4");
+
+        let datapoints = datastore.retrieve_datapoints();
+
+        println!(
+            "{:?}",
+            datapoints
+                .clone()
+                .into_iter()
+                .map(|point| (point.get_key(), point.get_data().to_owned()))
+                .collect::<Vec<(u64, String)>>()
+        );
+        assert_eq!(datapoints[0].get_data(), "79kg");
+        assert_eq!(datapoints[1].get_data(), "81kg");
+        assert_eq!(datapoints[2].get_data(), "80kg");
+        assert_eq!(datapoints[3].get_data(), "82kg");
+        assert_eq!(datapoints[4].get_data(), "83kg");
+    }
+
+    #[test]
     fn value_command_in_query_strips_non_numeric_information() {
         let datastore = Datastore::new();
         datastore.add_datapoint("80kg +weight");
         datastore.add_datapoint("8kg +curl");
 
-        let (retrieved, parsed) = datastore.query("curl:value");
+        let (retrieved, _) = datastore.query("curl:value");
 
         assert_eq!(retrieved[0].get_data(), "8");
     }
@@ -278,7 +307,7 @@ mod tests {
         datastore.add_datapoint("information +with +tags");
         datastore.add_datapoint("information +different");
 
-        let (query_result, parsed) = datastore.query("+different");
+        let (query_result, _) = datastore.query("+different");
 
         assert_eq!(1, query_result.len());
     }
@@ -290,7 +319,7 @@ mod tests {
         datastore.add_datapoint("information +with +tags");
         datastore.add_datapoint("information +different");
 
-        let (query_result, parsed) = datastore.query("different");
+        let (query_result, _) = datastore.query("different");
 
         assert_eq!(1, query_result.len());
     }
