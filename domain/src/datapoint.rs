@@ -2,14 +2,24 @@ use std::num::ParseFloatError;
 
 use chrono::prelude::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Datapoint {
     datetime: DateTime<Local>,
     data: String,
     tags: Vec<String>,
+    key: u64,
 }
 
 impl Datapoint {
+    pub fn new(datetime: DateTime<Local>, data: String, tags: Vec<String>, key: u64) -> Datapoint {
+        Datapoint {
+            datetime,
+            data,
+            tags,
+            key,
+        }
+    }
+
     pub fn data_same_as(&self, other: &Datapoint) -> bool {
         self.data == other.data
     }
@@ -35,12 +45,21 @@ impl Datapoint {
             datetime: self.datetime,
             data: self.strip_non_numeric(),
             tags: self.tags,
+            key: self.key,
         }
     }
 
     pub fn get_as_numeric(&self) -> Result<f64, ParseFloatError> {
         let num = self.strip_non_numeric();
         num.parse()
+    }
+
+    pub fn set_key(&mut self, key: u64) -> () {
+        self.key = key;
+    }
+
+    pub fn get_key(&self) -> u64 {
+        self.key
     }
 
     fn strip_non_numeric(&self) -> String {
@@ -81,6 +100,7 @@ fn handle_tags_and_create_datapoint(data: String, tags: Vec<String>) -> Datapoin
         data,
         tags: tag_collector,
         datetime,
+        key: 0,
     }
 }
 

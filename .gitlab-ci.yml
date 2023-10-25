@@ -7,7 +7,7 @@ testing:
     stage: test
     script:
         - apt-get update
-        - apt-get -y install curl jq pkg-config libfreetype6-dev libfontconfig1-dev
+        - apt-get -y install curl jq pkg-config libfreetype6-dev libfontconfig1-dev libssl-dev
         - cargo test
         - ./install-llvm-cov
         - cargo llvm-cov --lib --json --ignore-filename-regex plotcolors > cov.json

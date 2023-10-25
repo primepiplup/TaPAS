@@ -4,6 +4,7 @@ use std::sync::Mutex;
 pub struct Datastore {
     datapoints: Mutex<Vec<Datapoint>>,
     tags: Mutex<Vec<String>>,
+    counter: Mutex<u64>,
 }
 
 impl Datastore {
@@ -11,20 +12,34 @@ impl Datastore {
         Datastore {
             datapoints: Mutex::new(Vec::new()),
             tags: Mutex::new(Vec::new()),
+            counter: Mutex::new(0),
         }
     }
 
-    pub fn add_datapoint(&self, input: &str) -> () {
-        let datapoint = create_datapoint(input);
-        self.append_tags(datapoint.get_tags());
-        let mut lock = self.datapoints.lock().expect("mutex holder crashed");
-        for i in 0..lock.len() {
-            if lock[i].get_datetime() > datapoint.get_datetime() {
-                lock.insert(i, datapoint.clone());
-                return;
+    pub fn add_datapoint(&self, input: &str) -> Datapoint {
+        let mut new_datapoint = create_datapoint(input);
+        self.append_tags(new_datapoint.get_tags());
+        let counter = self.increment_counter();
+        new_datapoint.set_key(counter);
+        let mut old_datapoints = self.datapoints.lock().expect("mutex holder crashed");
+
+        let length = old_datapoints.len();
+
+        if length == 0 {
+            old_datapoints.push(new_datapoint.clone());
+            return new_datapoint;
+        } else {
+            let mut check_position = length;
+            while check_position > 0 {
+                check_position -= 1;
+                if old_datapoints[check_position].get_datetime() < new_datapoint.get_datetime() {
+                    old_datapoints.insert(check_position + 1, new_datapoint.clone());
+                    return new_datapoint;
+                }
             }
+            old_datapoints.insert(0, new_datapoint.clone());
+            return new_datapoint;
         }
-        lock.push(datapoint);
     }
 
     pub fn retrieve_datapoints(&self) -> Vec<Datapoint> {
@@ -64,6 +79,27 @@ impl Datastore {
                 lock.push(tag.clone());
             }
         }
+    }
+
+    fn increment_counter(&self) -> u64 {
+        let mut counter = self.counter.lock().expect("counter holder crashed");
+        *counter += 1;
+        *counter
+    }
+}
+
+impl From<Vec<Datapoint>> for Datastore {
+    fn from(datapoints: Vec<Datapoint>) -> Datastore {
+        let datastore = Datastore {
+            datapoints: Mutex::new(datapoints.clone()),
+            tags: Mutex::new(Vec::new()),
+            counter: Mutex::new(0),
+        };
+        for datapoint in datapoints {
+            datastore.append_tags(datapoint.get_tags());
+            datastore.increment_counter();
+        }
+        return datastore;
     }
 }
 
@@ -107,6 +143,30 @@ mod tests {
     use crate::datapoint;
 
     use super::*;
+
+    #[test]
+    fn from_a_vector_of_datapoints_a_datastore_is_born() {
+        let mut datapoints = Vec::new();
+        datapoints.push(datapoint::create_datapoint("some stuff +tag"));
+        datapoints.push(datapoint::create_datapoint("more stuff +another +stuff"));
+        datapoints.push(datapoint::create_datapoint("whatever +whatever +tag"));
+
+        let datastore = Datastore::from(datapoints.clone());
+
+        assert_eq!(datastore.datapoints.lock().unwrap()[0], datapoints[0]);
+        assert_eq!(datastore.datapoints.lock().unwrap()[1], datapoints[1]);
+        assert_eq!(datastore.datapoints.lock().unwrap()[2], datapoints[2]);
+        assert_eq!(
+            *datastore.tags.lock().unwrap(),
+            vec![
+                "tag".to_string(),
+                "another".to_string(),
+                "stuff".to_string(),
+                "whatever".to_string()
+            ]
+        );
+        assert_eq!(*datastore.counter.lock().unwrap(), 3);
+    }
 
     #[test]
     fn empty_query_returns_all_datapoints_from_store() {
@@ -191,12 +251,38 @@ mod tests {
     }
 
     #[test]
+    fn data_added_tagged_at_various_times_are_added_in_the_expected_locations() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("80kg +weight +DATE:2023-10-3");
+        datastore.add_datapoint("81kg +weight +DATE:2023-10-2");
+        datastore.add_datapoint("79kg +weight +DATE:2023-10-1");
+        datastore.add_datapoint("83kg +weight +DATE:2023-10-5");
+        datastore.add_datapoint("82kg +weight +DATE:2023-10-4");
+
+        let datapoints = datastore.retrieve_datapoints();
+
+        println!(
+            "{:?}",
+            datapoints
+                .clone()
+                .into_iter()
+                .map(|point| (point.get_key(), point.get_data().to_owned()))
+                .collect::<Vec<(u64, String)>>()
+        );
+        assert_eq!(datapoints[0].get_data(), "79kg");
+        assert_eq!(datapoints[1].get_data(), "81kg");
+        assert_eq!(datapoints[2].get_data(), "80kg");
+        assert_eq!(datapoints[3].get_data(), "82kg");
+        assert_eq!(datapoints[4].get_data(), "83kg");
+    }
+
+    #[test]
     fn value_command_in_query_strips_non_numeric_information() {
         let datastore = Datastore::new();
         datastore.add_datapoint("80kg +weight");
         datastore.add_datapoint("8kg +curl");
 
-        let (retrieved, parsed) = datastore.query("curl:value");
+        let (retrieved, _) = datastore.query("curl:value");
 
         assert_eq!(retrieved[0].get_data(), "8");
     }
@@ -260,7 +346,7 @@ mod tests {
         datastore.add_datapoint("information +with +tags");
         datastore.add_datapoint("information +different");
 
-        let (query_result, parsed) = datastore.query("+different");
+        let (query_result, _) = datastore.query("+different");
 
         assert_eq!(1, query_result.len());
     }
@@ -272,7 +358,7 @@ mod tests {
         datastore.add_datapoint("information +with +tags");
         datastore.add_datapoint("information +different");
 
-        let (query_result, parsed) = datastore.query("different");
+        let (query_result, _) = datastore.query("different");
 
         assert_eq!(1, query_result.len());
     }

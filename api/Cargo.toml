@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 domain = { path = "../domain"}
+persistence = { path = "../persistence" }
 chrono = "0.4.31"
 
 [dependencies.rocket]
