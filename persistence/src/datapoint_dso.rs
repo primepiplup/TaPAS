@@ -80,6 +80,61 @@ pub mod tests {
     use super::*;
 
     #[test]
+    fn datapoint_dso_exposes_data() {
+        let datapoint_dso = DatapointDSO {
+            datetime: 1698218241,
+            data: "Stuff".to_string(),
+            tags: vec!["tag".to_string()],
+            key: 5,
+        };
+        assert_eq!(datapoint_dso.get_data(), "Stuff".to_string());
+    }
+
+    #[test]
+    fn datapoint_dso_exposes_tags() {
+        let datapoint_dso = DatapointDSO {
+            datetime: 1698218241,
+            data: "Stuff".to_string(),
+            tags: vec!["tag".to_string()],
+            key: 5,
+        };
+        assert_eq!(datapoint_dso.get_tags(), vec!["tag".to_string()]);
+    }
+
+    #[test]
+    fn datapoint_dso_exposes_stringified_tags() {
+        let datapoint_dso = DatapointDSO {
+            datetime: 1698218241,
+            data: "Stuff".to_string(),
+            tags: vec!["tag".to_string(), "another".to_string()],
+            key: 5,
+        };
+        assert_eq!(datapoint_dso.get_stringified_tags(), "tag_another");
+    }
+
+    #[test]
+    fn datapoint_dso_exposes_key() {
+        let datapoint_dso = DatapointDSO {
+            datetime: 1698218241,
+            data: "Stuff".to_string(),
+            tags: vec!["tag".to_string()],
+            key: 5,
+        };
+        assert_eq!(datapoint_dso.get_key(), 5);
+    }
+
+    #[test]
+    fn datapoint_dso_exposes_datetime() {
+        let datapoint_dso = DatapointDSO {
+            datetime: 1698218241,
+            data: "Stuff".to_string(),
+            tags: vec!["tag".to_string()],
+            key: 5,
+        };
+        assert_eq!(datapoint_dso.get_datetime(), 1698218241);
+    }
+
+    #[test]
     fn datapoint_vec_can_convert_into_dso_vec() {
         let datapoints = vec![
             create_datapoint("Awesome +tag +D:2022-02-10 +T:15-20-30"),
