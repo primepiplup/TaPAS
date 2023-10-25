@@ -1,7 +1,7 @@
 use crate::datapoint_dso::DatapointDSO;
 use domain::datapoint::Datapoint;
-use sqlx::mysql::MySqlPoolOptions;
-use sqlx::MySqlPool;
+use sqlx::mysql::{MySqlPoolOptions, MySqlRow};
+use sqlx::{MySqlPool, Row};
 use std::env;
 
 pub struct DBManager {
@@ -32,6 +32,25 @@ impl DBManager {
         {
             Ok(_) => true,
             Err(_) => false,
+        }
+    }
+
+    pub async fn load_datapoints(&self) -> Vec<Datapoint> {
+        let query_rows = self.fetch_db_datapoints().await;
+        let datapoint_dsos: Vec<DatapointDSO> = query_rows
+            .into_iter()
+            .map(|row| DatapointDSO::from(row))
+            .collect();
+        datapoint_dsos.into_iter().map(|dso| dso.into()).collect()
+    }
+
+    async fn fetch_db_datapoints(&self) -> Vec<MySqlRow> {
+        match sqlx::query("SELECT * FROM datapoints ORDER BY datetime;")
+            .fetch_all(&self.pool)
+            .await
+        {
+            Ok(rows) => rows,
+            Err(_) => panic!("Horrible failure in fetching database-stored datapoints"),
         }
     }
 }
