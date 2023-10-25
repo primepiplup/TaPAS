@@ -142,9 +142,12 @@ fn tags(datastorage: &State<Datastore>) -> Json<Vec<Tag>> {
 
 #[launch]
 async fn rocket() -> _ {
+    let dbmanager = DBManager::new().await;
+    let datapoints = dbmanager.load_datapoints().await;
+    let datastore = Datastore::from(datapoints);
     rocket::build()
         .mount("/api", routes![input, query, plot, tags, predict])
         .mount("/plot", FileServer::from(relative!("../generated")))
-        .manage(Datastore::new())
-        .manage(DBManager::new().await)
+        .manage(datastore)
+        .manage(dbmanager)
 }
