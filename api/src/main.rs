@@ -5,6 +5,7 @@ use chrono::{Local, NaiveDateTime};
 use domain::analysis::linear_regression;
 use domain::datastore::Datastore;
 use domain::plotter::scatterplot;
+use persistence::dbmanager::DBManager;
 use rocket::fs::{relative, FileServer};
 use rocket::http::Status;
 use rocket::response::status;
@@ -60,8 +61,16 @@ struct Tag {
 }
 
 #[post("/input", format = "application/json", data = "<form_input>")]
-async fn input(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> () {
-    let _new_datapoint = datastorage.add_datapoint(form_input.value);
+async fn input(
+    form_input: Json<Form<'_>>,
+    datastorage: &State<Datastore>,
+    dbmanager: &State<DBManager>,
+) -> Status {
+    let new_datapoint = datastorage.add_datapoint(form_input.value);
+    match dbmanager.insert_datapoint(new_datapoint).await {
+        true => Status::Ok,
+        false => Status::InternalServerError,
+    }
 }
 
 #[post("/query", format = "application/json", data = "<form_input>")]
@@ -132,9 +141,10 @@ fn tags(datastorage: &State<Datastore>) -> Json<Vec<Tag>> {
 }
 
 #[launch]
-fn rocket() -> _ {
+async fn rocket() -> _ {
     rocket::build()
         .mount("/api", routes![input, query, plot, tags, predict])
         .mount("/plot", FileServer::from(relative!("../generated")))
         .manage(Datastore::new())
+        .manage(DBManager::new().await)
 }
