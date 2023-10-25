@@ -10,7 +10,6 @@ use rocket::http::Status;
 use rocket::response::status;
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket::State;
-use rocket_db_pools::{sqlx, Connection, Database};
 
 #[macro_use]
 extern crate rocket;
@@ -60,27 +59,9 @@ struct Tag {
     tag: String,
 }
 
-#[derive(Database)]
-#[database("mysql_storage")]
-struct Storage(sqlx::MySqlPool);
-
 #[post("/input", format = "application/json", data = "<form_input>")]
-async fn input(
-    form_input: Json<Form<'_>>,
-    datastorage: &State<Datastore>,
-    mut db: Connection<Storage>,
-) -> Status {
-    let new_datapoint = datastorage.add_datapoint(form_input.value);
-    match sqlx::query("INSERT INTO datapoints(data, tags, datetime) VALUES (?, ?, ?)")
-        .bind(new_datapoint.get_data())
-        .bind(new_datapoint.get_tags().join(" "))
-        .bind(new_datapoint.get_datetime().timestamp())
-        .execute(&mut *db)
-        .await
-    {
-        Ok(_) => Status::Ok,
-        Err(_) => Status::InternalServerError,
-    }
+async fn input(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> () {
+    let _new_datapoint = datastorage.add_datapoint(form_input.value);
 }
 
 #[post("/query", format = "application/json", data = "<form_input>")]
@@ -97,7 +78,7 @@ fn plot(
     let (datapoints, parsed) = datastorage.query(form_input.value);
     match scatterplot(&datapoints, parsed, form_input.with_regression) {
         Ok(filename) => status::Custom(Status::Ok, Json(Image { filename })),
-        Err(err) => status::Custom(
+        Err(_) => status::Custom(
             Status::InternalServerError,
             Json(Image {
                 filename: "nodice".to_string(),
@@ -156,5 +137,4 @@ fn rocket() -> _ {
         .mount("/api", routes![input, query, plot, tags, predict])
         .mount("/plot", FileServer::from(relative!("../generated")))
         .manage(Datastore::new())
-        .attach(Storage::init())
 }
