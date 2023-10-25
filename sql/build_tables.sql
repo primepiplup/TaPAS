@@ -5,6 +5,6 @@ CREATE TABLE datapoints (
 	data varchar(255),
 	tags varchar(255),
 	datetime INT,
-	data_key INT UNIQUE,
+	data_key BIGINT UNSIGNED UNIQUE,
 	PRIMARY KEY(id)
 )
