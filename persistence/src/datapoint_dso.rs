@@ -1,5 +1,6 @@
 use chrono::prelude::*;
 use domain::datapoint::Datapoint;
+use sqlx::{mysql::MySqlRow, Row};
 
 pub struct DatapointDSO {
     datetime: i64,
@@ -41,6 +42,22 @@ impl From<Datapoint> for DatapointDSO {
             data: datapoint.get_data().to_owned(),
             tags: datapoint.get_tags().to_owned(),
             key: datapoint.get_key(),
+        }
+    }
+}
+
+impl From<MySqlRow> for DatapointDSO {
+    fn from(row: MySqlRow) -> Self {
+        DatapointDSO {
+            data: row.try_get("data").unwrap(),
+            datetime: row.try_get("datetime").unwrap(),
+            tags: row
+                .try_get::<String, &str>("tags")
+                .unwrap()
+                .split("_")
+                .map(|tag| tag.to_string())
+                .collect(),
+            key: row.try_get("data_key").unwrap(),
         }
     }
 }
