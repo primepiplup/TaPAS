@@ -90,14 +90,20 @@ impl Datastore {
 
 impl From<Vec<Datapoint>> for Datastore {
     fn from(datapoints: Vec<Datapoint>) -> Datastore {
+        let mut max_key = 0;
+        for datapoint in datapoints.clone() {
+            let key = datapoint.get_key();
+            if max_key < key {
+                max_key = key;
+            }
+        }
         let datastore = Datastore {
             datapoints: Mutex::new(datapoints.clone()),
             tags: Mutex::new(Vec::new()),
-            counter: Mutex::new(0),
+            counter: Mutex::new(max_key),
         };
         for datapoint in datapoints {
             datastore.append_tags(datapoint.get_tags());
-            datastore.increment_counter();
         }
         return datastore;
     }
@@ -150,6 +156,9 @@ mod tests {
         datapoints.push(datapoint::create_datapoint("some stuff +tag"));
         datapoints.push(datapoint::create_datapoint("more stuff +another +stuff"));
         datapoints.push(datapoint::create_datapoint("whatever +whatever +tag"));
+        datapoints[0].set_key(1);
+        datapoints[1].set_key(2);
+        datapoints[2].set_key(3);
 
         let datastore = Datastore::from(datapoints.clone());
 
