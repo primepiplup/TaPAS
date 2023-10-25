@@ -11,6 +11,15 @@ pub struct Datapoint {
 }
 
 impl Datapoint {
+    pub fn new(datetime: DateTime<Local>, data: String, tags: Vec<String>, key: u64) -> Datapoint {
+        Datapoint {
+            datetime,
+            data,
+            tags,
+            key,
+        }
+    }
+
     pub fn data_same_as(&self, other: &Datapoint) -> bool {
         self.data == other.data
     }
@@ -47,6 +56,10 @@ impl Datapoint {
 
     pub fn set_key(&mut self, key: u64) -> () {
         self.key = key;
+    }
+
+    pub fn get_key(&self) -> u64 {
+        self.key
     }
 
     fn strip_non_numeric(&self) -> String {
