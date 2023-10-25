@@ -91,7 +91,7 @@ pub mod tests {
 
         assert_eq!(
             datapoint.get_datetime(),
-            &Local.with_ymd_and_hms(2023, 10, 25, 8, 45, 13).unwrap()
+            &Utc.with_ymd_and_hms(2023, 10, 25, 6, 45, 13).unwrap()
         );
         assert_eq!(datapoint.get_data(), &"Some stuff".to_string());
         assert_eq!(datapoint.get_tags(), &vec!["tag".to_string()]);
@@ -101,7 +101,9 @@ pub mod tests {
     #[test]
     fn datapoint_can_be_converted_into_dso() {
         let datapoint = Datapoint::new(
-            Local.with_ymd_and_hms(2023, 10, 25, 8, 45, 13).unwrap(),
+            Utc.with_ymd_and_hms(2023, 10, 25, 6, 45, 13)
+                .unwrap()
+                .into(),
             "Some stuff".to_string(),
             vec!["tag".to_string()],
             4,
