@@ -24,6 +24,14 @@ struct Form<'a> {
 
 #[derive(Deserialize)]
 #[serde(crate = "rocket::serde")]
+struct UpdateForm<'a> {
+    #[serde(rename = "fieldInput")]
+    value: &'a str,
+    key: u64,
+}
+
+#[derive(Deserialize)]
+#[serde(crate = "rocket::serde")]
 struct PlotRequest<'a> {
     #[serde(rename = "fieldInput")]
     value: &'a str,
@@ -71,6 +79,17 @@ async fn input(
         true => Status::Ok,
         false => Status::InternalServerError,
     }
+}
+
+#[post("/update", format = "application/json", data = "<form_input>")]
+async fn update(
+    form_input: Json<UpdateForm<'_>>,
+    datastorage: &State<Datastore>,
+    dbmanager: &State<DBManager>,
+) -> status::Custom<Json<DatapointDTO>> {
+    let updated_datapoint = datastorage.update_datapoint(form_input.value, form_input.key);
+    dbmanager.update_datapoint(updated_datapoint.clone()).await;
+    status::Custom(Status::Ok, Json(DatapointDTO::from(updated_datapoint)))
 }
 
 #[post("/query", format = "application/json", data = "<form_input>")]
@@ -146,7 +165,7 @@ async fn rocket() -> _ {
     let datapoints = dbmanager.load_datapoints().await;
     let datastore = Datastore::from(datapoints);
     rocket::build()
-        .mount("/api", routes![input, query, plot, tags, predict])
+        .mount("/api", routes![input, query, plot, tags, predict, update])
         .mount("/plot", FileServer::from(relative!("../generated")))
         .manage(datastore)
         .manage(dbmanager)

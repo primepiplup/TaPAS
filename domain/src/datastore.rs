@@ -1,5 +1,5 @@
 use crate::datapoint::{create_datapoint, Datapoint};
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 
 pub struct Datastore {
     datapoints: Mutex<Vec<Datapoint>>,
@@ -22,24 +22,28 @@ impl Datastore {
         let counter = self.increment_counter();
         new_datapoint.set_key(counter);
         let mut old_datapoints = self.datapoints.lock().expect("mutex holder crashed");
+        insert_sorted_by_time(new_datapoint.clone(), &mut old_datapoints);
+        return new_datapoint;
+    }
 
-        let length = old_datapoints.len();
-
-        if length == 0 {
-            old_datapoints.push(new_datapoint.clone());
-            return new_datapoint;
-        } else {
-            let mut check_position = length;
-            while check_position > 0 {
-                check_position -= 1;
-                if old_datapoints[check_position].get_datetime() < new_datapoint.get_datetime() {
-                    old_datapoints.insert(check_position + 1, new_datapoint.clone());
-                    return new_datapoint;
+    pub fn update_datapoint(&self, input: &str, key: u64) -> Datapoint {
+        let mut new_datapoint = create_datapoint(input);
+        self.append_tags(new_datapoint.get_tags());
+        new_datapoint.set_key(key);
+        let mut datapoint_vector = self.datapoints.lock().expect("mutex holder crashed");
+        for i in 0..datapoint_vector.len() {
+            if datapoint_vector[i].get_key() == key {
+                if datapoint_vector[i].get_datetime() == new_datapoint.get_datetime() {
+                    datapoint_vector[i] = new_datapoint.clone();
+                    break;
+                } else {
+                    datapoint_vector.remove(i);
+                    insert_sorted_by_time(new_datapoint.clone(), &mut datapoint_vector);
+                    break;
                 }
             }
-            old_datapoints.insert(0, new_datapoint.clone());
-            return new_datapoint;
         }
+        return new_datapoint;
     }
 
     pub fn retrieve_datapoints(&self) -> Vec<Datapoint> {
@@ -90,16 +94,40 @@ impl Datastore {
 
 impl From<Vec<Datapoint>> for Datastore {
     fn from(datapoints: Vec<Datapoint>) -> Datastore {
+        let mut max_key = 0;
+        for datapoint in datapoints.clone() {
+            let key = datapoint.get_key();
+            if max_key < key {
+                max_key = key;
+            }
+        }
         let datastore = Datastore {
             datapoints: Mutex::new(datapoints.clone()),
             tags: Mutex::new(Vec::new()),
-            counter: Mutex::new(0),
+            counter: Mutex::new(max_key),
         };
         for datapoint in datapoints {
             datastore.append_tags(datapoint.get_tags());
-            datastore.increment_counter();
         }
         return datastore;
+    }
+}
+
+fn insert_sorted_by_time<'a>(datapoint: Datapoint, vector: &mut MutexGuard<'a, Vec<Datapoint>>) {
+    let length = vector.len();
+
+    if length == 0 {
+        vector.push(datapoint.clone());
+    } else {
+        let mut check_position = length;
+        while check_position > 0 {
+            check_position -= 1;
+            if vector[check_position].get_datetime() < datapoint.get_datetime() {
+                vector.insert(check_position + 1, datapoint.clone());
+                return ();
+            }
+        }
+        vector.insert(0, datapoint.clone());
     }
 }
 
@@ -145,11 +173,57 @@ mod tests {
     use super::*;
 
     #[test]
+    fn datapoints_can_be_updated_based_on_key() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("A datapoint +tag +TIME:17-00-00");
+        datastore.add_datapoint("Another datapoint +another +TIME:17-00-01");
+
+        datastore.update_datapoint("Different information +different +TIME:17-00-00", 1);
+
+        assert_eq!(
+            datastore.retrieve_datapoints()[0].get_data(),
+            &"Different information".to_string()
+        );
+    }
+
+    #[test]
+    fn final_datapoint_can_also_be_updated_based_on_key() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("A datapoint +tag");
+        datastore.add_datapoint("Another datapoint +another");
+        datastore.add_datapoint("Even more +more");
+
+        datastore.update_datapoint("Different information +different", 3);
+
+        assert_eq!(
+            datastore.retrieve_datapoints()[2].get_data(),
+            &"Different information".to_string()
+        );
+    }
+
+    #[test]
+    fn datapoints_can_be_updated_based_on_key_redoing_time_ordering() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("A datapoint +tag +TIME:17-00-00");
+        datastore.add_datapoint("Another datapoint +another +TIME:17-00-01");
+
+        datastore.update_datapoint("A datapoint +tag +TIME:17-00-02", 1);
+
+        assert_eq!(
+            datastore.retrieve_datapoints()[1].get_data(),
+            &"A datapoint".to_string()
+        );
+    }
+
+    #[test]
     fn from_a_vector_of_datapoints_a_datastore_is_born() {
         let mut datapoints = Vec::new();
         datapoints.push(datapoint::create_datapoint("some stuff +tag"));
         datapoints.push(datapoint::create_datapoint("more stuff +another +stuff"));
         datapoints.push(datapoint::create_datapoint("whatever +whatever +tag"));
+        datapoints[0].set_key(1);
+        datapoints[1].set_key(2);
+        datapoints[2].set_key(3);
 
         let datastore = Datastore::from(datapoints.clone());
 

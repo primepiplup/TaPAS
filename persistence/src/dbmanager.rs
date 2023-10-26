@@ -1,7 +1,7 @@
 use crate::datapoint_dso::DatapointDSO;
 use domain::datapoint::Datapoint;
 use sqlx::mysql::{MySqlPoolOptions, MySqlRow};
-use sqlx::{MySqlPool, Row};
+use sqlx::MySqlPool;
 use std::env;
 
 pub struct DBManager {
@@ -22,6 +22,23 @@ impl DBManager {
         let dso: DatapointDSO = datapoint.into();
         match sqlx::query(
             "INSERT INTO datapoints(data, tags, datetime, data_key) VALUES (?, ?, ?, ?)",
+        )
+        .bind(dso.get_data())
+        .bind(dso.get_stringified_tags())
+        .bind(dso.get_datetime())
+        .bind(dso.get_key())
+        .execute(&self.pool)
+        .await
+        {
+            Ok(_) => true,
+            Err(_) => false,
+        }
+    }
+
+    pub async fn update_datapoint(&self, datapoint: Datapoint) -> bool {
+        let dso: DatapointDSO = datapoint.into();
+        match sqlx::query(
+            "UPDATE datapoints SET data = ?, tags = ?, datetime = ? WHERE data_key = ?",
         )
         .bind(dso.get_data())
         .bind(dso.get_stringified_tags())
