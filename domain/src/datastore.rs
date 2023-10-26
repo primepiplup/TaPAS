@@ -1,5 +1,5 @@
 use crate::datapoint::{create_datapoint, Datapoint};
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 
 pub struct Datastore {
     datapoints: Mutex<Vec<Datapoint>>,
@@ -22,24 +22,8 @@ impl Datastore {
         let counter = self.increment_counter();
         new_datapoint.set_key(counter);
         let mut old_datapoints = self.datapoints.lock().expect("mutex holder crashed");
-
-        let length = old_datapoints.len();
-
-        if length == 0 {
-            old_datapoints.push(new_datapoint.clone());
-            return new_datapoint;
-        } else {
-            let mut check_position = length;
-            while check_position > 0 {
-                check_position -= 1;
-                if old_datapoints[check_position].get_datetime() < new_datapoint.get_datetime() {
-                    old_datapoints.insert(check_position + 1, new_datapoint.clone());
-                    return new_datapoint;
-                }
-            }
-            old_datapoints.insert(0, new_datapoint.clone());
-            return new_datapoint;
-        }
+        insert_sorted_by_time(new_datapoint.clone(), &mut old_datapoints);
+        return new_datapoint;
     }
 
     pub fn update_datapoint(&self, input: &str, key: u64) -> Datapoint {
@@ -49,8 +33,14 @@ impl Datastore {
         let mut datapoint_vector = self.datapoints.lock().expect("mutex holder crashed");
         for i in 0..datapoint_vector.len() {
             if datapoint_vector[i].get_key() == key {
-                datapoint_vector[i] = new_datapoint.clone();
-                break;
+                if datapoint_vector[i].get_datetime() == new_datapoint.get_datetime() {
+                    datapoint_vector[i] = new_datapoint.clone();
+                    break;
+                } else {
+                    datapoint_vector.remove(i);
+                    insert_sorted_by_time(new_datapoint.clone(), &mut datapoint_vector);
+                    break;
+                }
             }
         }
         return new_datapoint;
@@ -123,6 +113,24 @@ impl From<Vec<Datapoint>> for Datastore {
     }
 }
 
+fn insert_sorted_by_time<'a>(datapoint: Datapoint, vector: &mut MutexGuard<'a, Vec<Datapoint>>) {
+    let length = vector.len();
+
+    if length == 0 {
+        vector.push(datapoint.clone());
+    } else {
+        let mut check_position = length;
+        while check_position > 0 {
+            check_position -= 1;
+            if vector[check_position].get_datetime() < datapoint.get_datetime() {
+                vector.insert(check_position + 1, datapoint.clone());
+                return ();
+            }
+        }
+        vector.insert(0, datapoint.clone());
+    }
+}
+
 fn query_parser(query: &str) -> Vec<Vec<String>> {
     let plus_replaced = query.trim().replace("+", " ");
     plus_replaced
@@ -167,10 +175,10 @@ mod tests {
     #[test]
     fn datapoints_can_be_updated_based_on_key() {
         let datastore = Datastore::new();
-        datastore.add_datapoint("A datapoint +tag");
-        datastore.add_datapoint("Another datapoint +another");
+        datastore.add_datapoint("A datapoint +tag +TIME:17-00-00");
+        datastore.add_datapoint("Another datapoint +another +TIME:17-00-01");
 
-        datastore.update_datapoint("Different information +different", 1);
+        datastore.update_datapoint("Different information +different +TIME:17-00-00", 1);
 
         assert_eq!(
             datastore.retrieve_datapoints()[0].get_data(),
@@ -190,6 +198,20 @@ mod tests {
         assert_eq!(
             datastore.retrieve_datapoints()[2].get_data(),
             &"Different information".to_string()
+        );
+    }
+
+    #[test]
+    fn datapoints_can_be_updated_based_on_key_redoing_time_ordering() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("A datapoint +tag +TIME:17-00-00");
+        datastore.add_datapoint("Another datapoint +another +TIME:17-00-01");
+
+        datastore.update_datapoint("A datapoint +tag +TIME:17-00-02", 1);
+
+        assert_eq!(
+            datastore.retrieve_datapoints()[1].get_data(),
+            &"A datapoint".to_string()
         );
     }
 
