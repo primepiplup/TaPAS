@@ -1,7 +1,7 @@
 <script lang='ts'>
   import Result from "./result.svelte";
   import Error from "../error.svelte";
-  let datapoints: {timestamp: string, data: string, tags: string[]}[];
+  let datapoints: {timestamp: string, data: string, tags: string[], key: number}[];
   let value: string = "";
   let status: number;
 
