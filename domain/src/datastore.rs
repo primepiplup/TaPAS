@@ -42,6 +42,20 @@ impl Datastore {
         }
     }
 
+    pub fn update_datapoint(&self, input: &str, key: u64) -> Datapoint {
+        let mut new_datapoint = create_datapoint(input);
+        self.append_tags(new_datapoint.get_tags());
+        new_datapoint.set_key(key);
+        let mut datapoint_vector = self.datapoints.lock().expect("mutex holder crashed");
+        for i in 0..datapoint_vector.len() {
+            if datapoint_vector[i].get_key() == key {
+                datapoint_vector[i] = new_datapoint.clone();
+                break;
+            }
+        }
+        return new_datapoint;
+    }
+
     pub fn retrieve_datapoints(&self) -> Vec<Datapoint> {
         let lock = self.datapoints.lock().expect("mutex holder crashed");
         lock.clone()
@@ -149,6 +163,35 @@ mod tests {
     use crate::datapoint;
 
     use super::*;
+
+    #[test]
+    fn datapoints_can_be_updated_based_on_key() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("A datapoint +tag");
+        datastore.add_datapoint("Another datapoint +another");
+
+        datastore.update_datapoint("Different information +different", 1);
+
+        assert_eq!(
+            datastore.retrieve_datapoints()[0].get_data(),
+            &"Different information".to_string()
+        );
+    }
+
+    #[test]
+    fn final_datapoint_can_also_be_updated_based_on_key() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("A datapoint +tag");
+        datastore.add_datapoint("Another datapoint +another");
+        datastore.add_datapoint("Even more +more");
+
+        datastore.update_datapoint("Different information +different", 3);
+
+        assert_eq!(
+            datastore.retrieve_datapoints()[2].get_data(),
+            &"Different information".to_string()
+        );
+    }
 
     #[test]
     fn from_a_vector_of_datapoints_a_datastore_is_born() {
