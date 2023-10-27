@@ -4,11 +4,14 @@ use crate::plotter::util::*;
 use chrono::prelude::*;
 use plotters::prelude::*;
 
-pub fn categorical_plot(dataset: Vec<(Vec<Datapoint>, Vec<Vec<String>>)>) -> String {
+pub fn categorical_plot(dataset: Vec<(Vec<Datapoint>, Vec<Vec<String>>)>) -> Option<String> {
     let plot_x_start = 0;
     let plot_x_end = dataset.len() + 1;
 
     let titled_datasets = into_categorical(dataset);
+    if titled_datasets.len() == 0 {
+        return None;
+    }
     let (lower, upper) = apply_margin(get_total_upper_lower(titled_datasets.clone()));
 
     let filename = generate_filename(Local::now());
@@ -61,7 +64,7 @@ pub fn categorical_plot(dataset: Vec<(Vec<Datapoint>, Vec<Vec<String>>)>) -> Str
             .unwrap();
     }
 
-    return filename;
+    return Some(filename);
 }
 
 fn generate_title(titled_data: Vec<(Vec<f64>, String)>) -> (String, u32) {
