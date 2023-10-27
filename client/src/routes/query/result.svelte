@@ -68,6 +68,7 @@
 
 	function switchMode() {
 		editing = !editing;
+		getDatapointValues();
 	} 
 
 	async function updateDatapoint() {
