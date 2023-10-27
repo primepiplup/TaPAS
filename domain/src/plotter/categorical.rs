@@ -108,6 +108,21 @@ mod test {
     use crate::datastore::Datastore;
 
     #[test]
+    fn plotting_queries_with_no_results_returns_none() {
+        let mut collector: Vec<(Vec<Datapoint>, Vec<Vec<String>>)> = Vec::new();
+        let datastore = Datastore::new();
+        datastore.add_datapoint("6 hours +sleep +coffee");
+        datastore.add_datapoint("7 hours +sleep +coffee");
+        datastore.add_datapoint("7 hours +sleep +tea");
+        datastore.add_datapoint("8 hours +sleep +tea");
+        collector.push(datastore.query("totally not findable"));
+
+        let result = categorical_plot(collector);
+
+        assert_eq!(result, None);
+    }
+
+    #[test]
     fn generate_title_generates_expected_title() {
         let mut collector: Vec<(Vec<Datapoint>, Vec<Vec<String>>)> = Vec::new();
         let datastore = Datastore::new();
