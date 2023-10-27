@@ -4,7 +4,8 @@ use crate::datapoint_dto::{dto_vec_from, DatapointDTO};
 use chrono::{Local, NaiveDateTime};
 use domain::analysis::linear_regression;
 use domain::datastore::Datastore;
-use domain::plotter::scatterplot;
+use domain::plotter::categorical::categorical_plot;
+use domain::plotter::scatterplot::scatterplot;
 use persistence::dbmanager::DBManager;
 use rocket::fs::{relative, FileServer};
 use rocket::http::Status;
@@ -20,6 +21,14 @@ extern crate rocket;
 struct Form<'a> {
     #[serde(rename = "fieldInput")]
     value: &'a str,
+}
+
+#[derive(Deserialize)]
+#[serde(crate = "rocket::serde")]
+struct CompareForm<'a> {
+    #[serde(borrow)]
+    #[serde(rename = "fieldInputs")]
+    queries: Vec<&'a str>,
 }
 
 #[derive(Deserialize)]
@@ -115,6 +124,26 @@ fn plot(
     }
 }
 
+#[post("/comparison", format = "application/json", data = "<form_input>")]
+fn comparison(
+    form_input: Json<CompareForm<'_>>,
+    datastorage: &State<Datastore>,
+) -> status::Custom<Json<Image>> {
+    let mut collector = Vec::new();
+    for query in form_input.queries.clone() {
+        collector.push(datastorage.query(query));
+    }
+    match categorical_plot(collector) {
+        Some(filename) => status::Custom(Status::Ok, Json(Image { filename })),
+        None => status::Custom(
+            Status::BadRequest,
+            Json(Image {
+                filename: "error".to_string(),
+            }),
+        ),
+    }
+}
+
 #[post("/predict", format = "application/json", data = "<form_input>")]
 fn predict(
     form_input: Json<PredictionForm<'_>>,
@@ -165,7 +194,10 @@ async fn rocket() -> _ {
     let datapoints = dbmanager.load_datapoints().await;
     let datastore = Datastore::from(datapoints);
     rocket::build()
-        .mount("/api", routes![input, query, plot, tags, predict, update])
+        .mount(
+            "/api",
+            routes![input, query, plot, tags, predict, update, comparison],
+        )
         .mount("/plot", FileServer::from(relative!("../generated")))
         .manage(datastore)
         .manage(dbmanager)

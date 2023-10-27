@@ -20,6 +20,7 @@
   <a href="/">Input</a>
   <a href="/query">Query</a>
   <a href="/visual">Visualize</a>
+  <a href="/compare">Compare</a>
   <a href="/predict">Predict</a>
 </nav>
 
