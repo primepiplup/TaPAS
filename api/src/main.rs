@@ -2,10 +2,10 @@ mod datapoint_dto;
 
 use crate::datapoint_dto::{dto_vec_from, DatapointDTO};
 use chrono::{Local, NaiveDateTime};
-use domain::analysis::linear_regression;
 use domain::datastore::Datastore;
 use domain::plotter::categorical::categorical_plot;
 use domain::plotter::scatterplot::scatterplot;
+use domain::stats::model_fit::linear_regression;
 use persistence::dbmanager::DBManager;
 use rocket::fs::{relative, FileServer};
 use rocket::http::Status;
