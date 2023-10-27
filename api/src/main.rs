@@ -133,8 +133,15 @@ fn comparison(
     for query in form_input.queries.clone() {
         collector.push(datastorage.query(query));
     }
-    let filename = categorical_plot(collector);
-    status::Custom(Status::Ok, Json(Image { filename }))
+    match categorical_plot(collector) {
+        Some(filename) => status::Custom(Status::Ok, Json(Image { filename })),
+        None => status::Custom(
+            Status::BadRequest,
+            Json(Image {
+                filename: "error".to_string(),
+            }),
+        ),
+    }
 }
 
 #[post("/predict", format = "application/json", data = "<form_input>")]
