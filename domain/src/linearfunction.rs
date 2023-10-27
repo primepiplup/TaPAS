@@ -71,7 +71,7 @@ impl LinearFunction {
     }
 }
 
-fn linear_equation(a: f64, x: f64, b: f64) -> f64 {
+pub fn linear_equation(a: f64, x: f64, b: f64) -> f64 {
     a * x + b
 }
 
@@ -136,6 +136,14 @@ pub mod tests {
 
         assert_eq!(y1, 10.0);
         assert_eq!(y2, 12.0);
+    }
+
+    #[test]
+    fn linear_equation_halfx_plus_zero_provides_accurate_results() {
+        let eq = |x| linear_equation(0.5, x, 0.0);
+
+        assert_eq!(eq(2.0), 1.0);
+        assert_eq!(eq(4.0), 2.0);
     }
 
     #[test]
