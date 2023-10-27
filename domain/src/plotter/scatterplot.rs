@@ -1,7 +1,7 @@
-use crate::analysis::linear_regression;
 use crate::datapoint::Datapoint;
 use crate::plotter::plotcolors::PlotColors;
 use crate::plotter::util::*;
+use crate::stats::model_fit::linear_regression;
 use chrono::{DateTime, Local, TimeZone};
 use plotters::prelude::*;
 use std::io::Error;
