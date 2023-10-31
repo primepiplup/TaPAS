@@ -1,3 +1,5 @@
+use std::env;
+
 use serde::Deserialize;
 
 #[derive(Deserialize, Clone)]
@@ -63,8 +65,14 @@ pub struct TTable {
 
 impl TTable {
     pub fn new() -> TTable {
-        let mut reader = csv::Reader::from_path("../degrees_of_freedom.csv")
-            .expect("Could not find degrees of freedom lookup table");
+        let path = match env::var("CSV_PATH") {
+            Ok(var) => var,
+            Err(_) => {
+                panic!("CSV_PATH is not configured. Configure it before launching the program.")
+            }
+        };
+        let mut reader =
+            csv::Reader::from_path(path).expect("Could not find degrees of freedom lookup table");
         let mut collector = Vec::new();
         for result in reader.deserialize() {
             let record: TDistribution = result.unwrap();
