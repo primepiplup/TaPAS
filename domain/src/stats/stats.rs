@@ -71,7 +71,7 @@ pub fn compare(samples: &Vec<(Vec<Datapoint>, ParsedQuery)>) -> Vec<Summary> {
 fn two_group_comparison(samples: Vec<(Vec<f64>, String)>) -> Vec<Summary> {
     let ttable = TTable::new();
     let (t, dof) = pooled_two_sample_t_test(&samples[0].0, &samples[1].0);
-    let p = ttable.get_p_for(dof, t);
+    let p = ttable.get_p_for(dof, t.abs());
     let summary1 = Summary::from(samples[0].0.clone())
         .set_name(samples[0].1.clone())
         .set_p(p);
