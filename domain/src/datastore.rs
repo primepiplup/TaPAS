@@ -143,15 +143,16 @@ fn apply_query_commands(
     let mut transformed = datapoints;
     for element in &queries.get_raw_parsed() {
         if element.len() > 1 {
-            transformed = apply_command(transformed, element[1].clone());
+            transformed = apply_command(transformed, element[1].clone(), element[0].clone());
         }
     }
     (transformed, queries)
 }
 
-fn apply_command(datapoints: Vec<Datapoint>, command: String) -> Vec<Datapoint> {
+fn apply_command(datapoints: Vec<Datapoint>, command: String, tag: String) -> Vec<Datapoint> {
     match command.as_str() {
         "value" => strip_non_numeric(datapoints),
+        "exclude" => remove_where_tag(datapoints, tag),
         _ => datapoints,
     }
 }
@@ -163,11 +164,33 @@ fn strip_non_numeric(datapoints: Vec<Datapoint>) -> Vec<Datapoint> {
         .collect()
 }
 
+fn remove_where_tag(datapoints: Vec<Datapoint>, tag: String) -> Vec<Datapoint> {
+    let mut collector = Vec::new();
+    for datapoint in datapoints {
+        if !datapoint.get_tags().contains(&tag) {
+            collector.push(datapoint);
+        }
+    }
+    return collector;
+}
+
 #[cfg(test)]
 mod tests {
     use crate::datapoint;
 
     use super::*;
+
+    #[test]
+    fn query_can_exclude_certain_tags() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("data +one +two");
+        datastore.add_datapoint("more +one");
+
+        let (found, _) = datastore.query("one two:exclude");
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].get_data(), "more");
+    }
 
     #[test]
     fn datapoints_can_be_updated_based_on_key() {
@@ -258,7 +281,11 @@ mod tests {
         datastore.add_datapoint("More cool information +tag");
         let datapoints = datastore.retrieve_datapoints();
 
-        let datapoints_after_command = apply_command(datapoints.clone(), "Unknown".to_string());
+        let datapoints_after_command = apply_command(
+            datapoints.clone(),
+            "Unknown".to_string(),
+            "Whatever".to_string(),
+        );
 
         assert_eq!(
             datapoints[0].get_data(),
@@ -364,7 +391,7 @@ mod tests {
         datastore.add_datapoint("80kg +weight");
 
         let datapoints = datastore.retrieve_datapoints();
-        let valuestripped = apply_command(datapoints, "value".to_owned());
+        let valuestripped = apply_command(datapoints, "value".to_owned(), "weight".to_string());
 
         assert_eq!(valuestripped[0].get_data(), "80");
     }
