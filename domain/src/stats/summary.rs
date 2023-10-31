@@ -17,6 +17,14 @@ impl Summary {
         }
     }
 
+    pub fn set_p(self, p: f64) -> Summary {
+        Summary {
+            name: self.name,
+            mean: self.mean,
+            p,
+        }
+    }
+
     pub fn summaries_from(queried: Vec<(Vec<Datapoint>, ParsedQuery)>) -> Vec<Summary> {
         let mut collector = Vec::new();
         for (datapoints, query) in queried {
@@ -47,6 +55,17 @@ impl From<Vec<Datapoint>> for Summary {
             None => (Vec::new(), Vec::new()),
         };
         let mean = average(&data);
+        Summary {
+            name: "".to_string(),
+            mean,
+            p: 1.0,
+        }
+    }
+}
+
+impl From<Vec<f64>> for Summary {
+    fn from(nums: Vec<f64>) -> Summary {
+        let mean = average(&nums);
         Summary {
             name: "".to_string(),
             mean,
