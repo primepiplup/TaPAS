@@ -6,6 +6,7 @@ use rocket::serde::Serialize;
 pub struct SummaryDTO {
     name: String,
     mean: f64,
+    p: f64,
 }
 
 impl From<Summary> for SummaryDTO {
@@ -13,6 +14,7 @@ impl From<Summary> for SummaryDTO {
         SummaryDTO {
             name: summary.get_name(),
             mean: summary.get_mean(),
+            p: summary.get_p(),
         }
     }
 }
