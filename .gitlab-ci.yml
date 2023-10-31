@@ -6,6 +6,7 @@ stages:
 testing:
     stage: test
     script:
+        - export CSV_PATH="../degrees_of_freedom.csv"
         - apt-get update
         - apt-get -y install curl jq pkg-config libfreetype6-dev libfontconfig1-dev libssl-dev
         - cargo test
