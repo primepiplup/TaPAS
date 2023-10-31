@@ -1,4 +1,5 @@
 use crate::datapoint::Datapoint;
+use crate::parsedquery::ParsedQuery;
 use crate::plotter::util::*;
 use chrono::{DateTime, Local};
 use plotters::prelude::LogScalable;
@@ -51,9 +52,7 @@ pub fn date_data_processing(
     data_processing(numeric_data)
 }
 
-pub fn into_categorical(
-    datasets: Vec<(Vec<Datapoint>, Vec<Vec<String>>)>,
-) -> Vec<(Vec<f64>, String)> {
+pub fn into_categorical(datasets: Vec<(Vec<Datapoint>, ParsedQuery)>) -> Vec<(Vec<f64>, String)> {
     let mut collector: Vec<(Vec<f64>, String)> = Vec::new();
     for (datapoints, query) in datasets {
         let values: Vec<f64>;
@@ -61,7 +60,7 @@ pub fn into_categorical(
             Some((_, data)) => values = data,
             None => continue,
         };
-        let title = collect_query(query);
+        let title = query.collect_query();
         collector.push((values, title));
     }
     return collector;
@@ -77,7 +76,7 @@ mod test {
     #[test]
     fn into_categorical_takes_a_vector_of_retrieved_datasets_and_queries_and_returns_titled_data_vectors(
     ) {
-        let mut collector: Vec<(Vec<Datapoint>, Vec<Vec<String>>)> = Vec::new();
+        let mut collector: Vec<(Vec<Datapoint>, ParsedQuery)> = Vec::new();
         let datastore = Datastore::new();
         datastore.add_datapoint("6 hours +coffee");
         datastore.add_datapoint("7 hours +coffee");
