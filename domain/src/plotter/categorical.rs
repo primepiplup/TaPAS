@@ -1,6 +1,7 @@
 use crate::datapoint::Datapoint;
 use crate::plotter::plotcolors::PlotColors;
 use crate::plotter::util::*;
+use crate::stats::preprocess::into_categorical;
 use chrono::prelude::*;
 use plotters::prelude::*;
 
@@ -78,20 +79,6 @@ fn generate_title(titled_data: Vec<(Vec<f64>, String)>) -> (String, u32) {
     return (title, font_size);
 }
 
-fn into_categorical(datasets: Vec<(Vec<Datapoint>, Vec<Vec<String>>)>) -> Vec<(Vec<f64>, String)> {
-    let mut collector: Vec<(Vec<f64>, String)> = Vec::new();
-    for (datapoints, query) in datasets {
-        let values: Vec<f64>;
-        match get_numeric_data(&datapoints) {
-            Some((_, data)) => values = data,
-            None => continue,
-        };
-        let title = collect_query(query);
-        collector.push((values, title));
-    }
-    return collector;
-}
-
 fn get_total_upper_lower(titled_data: Vec<(Vec<f64>, String)>) -> (f64, f64) {
     let mut collector: Vec<f64> = Vec::new();
     for (values, _) in titled_data {
@@ -106,21 +93,6 @@ fn get_total_upper_lower(titled_data: Vec<(Vec<f64>, String)>) -> (f64, f64) {
 mod test {
     use super::*;
     use crate::datastore::Datastore;
-
-    #[test]
-    fn plotting_queries_with_no_results_returns_none() {
-        let mut collector: Vec<(Vec<Datapoint>, Vec<Vec<String>>)> = Vec::new();
-        let datastore = Datastore::new();
-        datastore.add_datapoint("6 hours +sleep +coffee");
-        datastore.add_datapoint("7 hours +sleep +coffee");
-        datastore.add_datapoint("7 hours +sleep +tea");
-        datastore.add_datapoint("8 hours +sleep +tea");
-        collector.push(datastore.query("totally not findable"));
-
-        let result = categorical_plot(collector);
-
-        assert_eq!(result, None);
-    }
 
     #[test]
     fn generate_title_generates_expected_title() {
@@ -181,24 +153,17 @@ mod test {
     }
 
     #[test]
-    fn into_categorical_takes_a_vector_of_retrieved_datasets_and_queries_and_returns_titled_data_vectors(
-    ) {
+    fn plotting_queries_with_no_results_returns_none() {
         let mut collector: Vec<(Vec<Datapoint>, Vec<Vec<String>>)> = Vec::new();
         let datastore = Datastore::new();
-        datastore.add_datapoint("6 hours +coffee");
-        datastore.add_datapoint("7 hours +coffee");
-        datastore.add_datapoint("7 hours +tea");
-        datastore.add_datapoint("8 hours +tea");
-        collector.push(datastore.query("coffee"));
-        collector.push(datastore.query("tea"));
+        datastore.add_datapoint("6 hours +sleep +coffee");
+        datastore.add_datapoint("7 hours +sleep +coffee");
+        datastore.add_datapoint("7 hours +sleep +tea");
+        datastore.add_datapoint("8 hours +sleep +tea");
+        collector.push(datastore.query("totally not findable"));
 
-        let titled_data = into_categorical(collector);
+        let result = categorical_plot(collector);
 
-        assert_eq!(titled_data[0].0[0], 6.0);
-        assert_eq!(titled_data[0].0[1], 7.0);
-        assert_eq!(titled_data[1].0[0], 7.0);
-        assert_eq!(titled_data[1].0[1], 8.0);
-        assert_eq!(titled_data[0].1, "coffee".to_string());
-        assert_eq!(titled_data[1].1, "tea".to_string());
+        assert_eq!(result, None);
     }
 }
