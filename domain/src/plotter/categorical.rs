@@ -6,7 +6,7 @@ use crate::stats::preprocess::into_categorical;
 use chrono::prelude::*;
 use plotters::prelude::*;
 
-pub fn categorical_plot(dataset: Vec<(Vec<Datapoint>, ParsedQuery)>) -> Option<String> {
+pub fn categorical_plot(dataset: &Vec<(Vec<Datapoint>, ParsedQuery)>) -> Option<String> {
     let plot_x_start = 0;
     let plot_x_end = dataset.len() + 1;
 
@@ -109,7 +109,7 @@ mod test {
         collector.push(datastore.query("sleep tea"));
         collector.push(datastore.query("sleep cola"));
 
-        let titled_data = into_categorical(collector);
+        let titled_data = into_categorical(&collector);
         let (title, _) = generate_title(titled_data);
 
         assert_eq!(title, "sleep, coffee vs sleep, tea vs sleep, cola")
@@ -129,7 +129,7 @@ mod test {
         collector.push(datastore.query("sleep tea"));
         collector.push(datastore.query("sleep cola"));
 
-        let titled_data = into_categorical(collector);
+        let titled_data = into_categorical(&collector);
         let (_, size) = generate_title(titled_data);
 
         assert_eq!(size, 23)
@@ -146,7 +146,7 @@ mod test {
         collector.push(datastore.query("coffee"));
         collector.push(datastore.query("tea"));
 
-        let titled_data = into_categorical(collector);
+        let titled_data = into_categorical(&collector);
         let (lower, upper) = get_total_upper_lower(titled_data);
 
         assert_eq!(lower, 6.0);
@@ -163,7 +163,7 @@ mod test {
         datastore.add_datapoint("8 hours +sleep +tea");
         collector.push(datastore.query("totally not findable"));
 
-        let result = categorical_plot(collector);
+        let result = categorical_plot(&collector);
 
         assert_eq!(result, None);
     }
