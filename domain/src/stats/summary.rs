@@ -1,13 +1,11 @@
-use crate::{
-    datapoint::Datapoint,
-    plotter::util::{collect_query, get_numeric_data},
-};
+use crate::{datapoint::Datapoint, parsedquery::ParsedQuery, plotter::util::get_numeric_data};
 
 use super::stats::average;
 
 pub struct Summary {
     name: String,
     mean: f64,
+    p: f64,
 }
 
 impl Summary {
@@ -15,13 +13,14 @@ impl Summary {
         Summary {
             name: title,
             mean: self.mean,
+            p: self.p,
         }
     }
 
-    pub fn summaries_from(queried: Vec<(Vec<Datapoint>, Vec<Vec<String>>)>) -> Vec<Summary> {
+    pub fn summaries_from(queried: Vec<(Vec<Datapoint>, ParsedQuery)>) -> Vec<Summary> {
         let mut collector = Vec::new();
         for (datapoints, query) in queried {
-            let title = collect_query(query);
+            let title = query.collect_query();
             let summary = Summary::from(datapoints).set_name(title);
             collector.push(summary);
         }
@@ -35,6 +34,10 @@ impl Summary {
     pub fn get_name(&self) -> String {
         self.name.clone()
     }
+
+    pub fn get_p(&self) -> f64 {
+        self.p
+    }
 }
 
 impl From<Vec<Datapoint>> for Summary {
@@ -47,6 +50,7 @@ impl From<Vec<Datapoint>> for Summary {
         Summary {
             name: "".to_string(),
             mean,
+            p: 1.0,
         }
     }
 }
@@ -69,6 +73,7 @@ mod tests {
 
         assert_eq!(summary.get_mean(), 0.0);
         assert_eq!(summary.get_name(), "".to_string());
+        assert_eq!(summary.get_p(), 1.0);
     }
 
     #[test]
