@@ -1,11 +1,12 @@
 use crate::datapoint::Datapoint;
+use crate::parsedquery::ParsedQuery;
 use crate::plotter::plotcolors::PlotColors;
 use crate::plotter::util::*;
 use crate::stats::preprocess::into_categorical;
 use chrono::prelude::*;
 use plotters::prelude::*;
 
-pub fn categorical_plot(dataset: Vec<(Vec<Datapoint>, Vec<Vec<String>>)>) -> Option<String> {
+pub fn categorical_plot(dataset: Vec<(Vec<Datapoint>, ParsedQuery)>) -> Option<String> {
     let plot_x_start = 0;
     let plot_x_end = dataset.len() + 1;
 
@@ -96,7 +97,7 @@ mod test {
 
     #[test]
     fn generate_title_generates_expected_title() {
-        let mut collector: Vec<(Vec<Datapoint>, Vec<Vec<String>>)> = Vec::new();
+        let mut collector: Vec<(Vec<Datapoint>, ParsedQuery)> = Vec::new();
         let datastore = Datastore::new();
         datastore.add_datapoint("6 hours +sleep +coffee");
         datastore.add_datapoint("7 hours +sleep +coffee");
@@ -116,7 +117,7 @@ mod test {
 
     #[test]
     fn generate_title_generates_appropriate_text_size_for_display() {
-        let mut collector: Vec<(Vec<Datapoint>, Vec<Vec<String>>)> = Vec::new();
+        let mut collector: Vec<(Vec<Datapoint>, ParsedQuery)> = Vec::new();
         let datastore = Datastore::new();
         datastore.add_datapoint("6 hours +sleep +coffee");
         datastore.add_datapoint("7 hours +sleep +coffee");
@@ -136,7 +137,7 @@ mod test {
 
     #[test]
     fn get_total_upper_lower_gets_upper_and_lower_of_vector_of_titled_data() {
-        let mut collector: Vec<(Vec<Datapoint>, Vec<Vec<String>>)> = Vec::new();
+        let mut collector: Vec<(Vec<Datapoint>, ParsedQuery)> = Vec::new();
         let datastore = Datastore::new();
         datastore.add_datapoint("6 hours +coffee");
         datastore.add_datapoint("7 hours +coffee");
@@ -154,7 +155,7 @@ mod test {
 
     #[test]
     fn plotting_queries_with_no_results_returns_none() {
-        let mut collector: Vec<(Vec<Datapoint>, Vec<Vec<String>>)> = Vec::new();
+        let mut collector: Vec<(Vec<Datapoint>, ParsedQuery)> = Vec::new();
         let datastore = Datastore::new();
         datastore.add_datapoint("6 hours +sleep +coffee");
         datastore.add_datapoint("7 hours +sleep +coffee");
