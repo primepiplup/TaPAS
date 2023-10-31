@@ -1,4 +1,5 @@
 use crate::datapoint::{create_datapoint, Datapoint};
+use crate::parsedquery::ParsedQuery;
 use std::sync::{Mutex, MutexGuard};
 
 pub struct Datastore {
@@ -56,20 +57,15 @@ impl Datastore {
         lock.clone()
     }
 
-    pub fn query(&self, query: &str) -> (Vec<Datapoint>, Vec<Vec<String>>) {
+    pub fn query(&self, query: &str) -> (Vec<Datapoint>, ParsedQuery) {
         let mut collector: Vec<Datapoint> = Vec::new();
-        let parsed: Vec<Vec<String>> = query_parser(query);
+        let parsed: ParsedQuery = query_parser(query);
         let datapoints: Vec<Datapoint> = self.retrieve_datapoints();
-        if parsed.len() < 1 || &parsed[0][0] == "" {
+        if parsed.empty() {
             return (datapoints, parsed);
         }
         for datapoint in datapoints {
-            let parsed = &parsed;
-            let truthvalues: Vec<bool> = parsed
-                .into_iter()
-                .map(|tag| datapoint.get_tags().contains(&tag[0]))
-                .collect();
-            if !truthvalues.contains(&false) {
+            if parsed.can_all_be_found_in(datapoint.get_tags()) {
                 collector.push(datapoint.clone());
             }
         }
@@ -131,20 +127,21 @@ fn insert_sorted_by_time<'a>(datapoint: Datapoint, vector: &mut MutexGuard<'a, V
     }
 }
 
-fn query_parser(query: &str) -> Vec<Vec<String>> {
+fn query_parser(query: &str) -> ParsedQuery {
     let plus_replaced = query.trim().replace("+", " ");
-    plus_replaced
+    let parsed: Vec<Vec<String>> = plus_replaced
         .split_whitespace()
         .map(|s| s.split(":").map(|s| s.to_string()).collect())
-        .collect()
+        .collect();
+    return ParsedQuery::from(parsed);
 }
 
 fn apply_query_commands(
     datapoints: Vec<Datapoint>,
-    queries: Vec<Vec<String>>,
-) -> (Vec<Datapoint>, Vec<Vec<String>>) {
+    queries: ParsedQuery,
+) -> (Vec<Datapoint>, ParsedQuery) {
     let mut transformed = datapoints;
-    for element in &queries {
+    for element in &queries.get_raw_parsed() {
         if element.len() > 1 {
             transformed = apply_command(transformed, element[1].clone());
         }
@@ -377,10 +374,7 @@ mod tests {
         let mut expected: Vec<&str> = Vec::new();
         expected.push("tag");
 
-        let parsed: Vec<String> = query_parser("+tag")
-            .into_iter()
-            .map(|tagelem| tagelem[0].clone())
-            .collect();
+        let parsed: Vec<String> = query_parser("+tag").get_parsed_tags();
 
         assert_eq!(expected, parsed);
     }
@@ -391,10 +385,7 @@ mod tests {
         expected.push("tag");
         expected.push("another");
 
-        let parsed: Vec<String> = query_parser("+tag another")
-            .into_iter()
-            .map(|tagelem| tagelem[0].clone())
-            .collect();
+        let parsed: Vec<String> = query_parser("+tag another").get_parsed_tags();
 
         assert_eq!(expected, parsed);
     }
@@ -405,10 +396,7 @@ mod tests {
         expected.push("tag");
         expected.push("another");
 
-        let parsed: Vec<String> = query_parser("+tag+another")
-            .into_iter()
-            .map(|tagelem| tagelem[0].clone())
-            .collect();
+        let parsed: Vec<String> = query_parser("+tag+another").get_parsed_tags();
 
         assert_eq!(expected, parsed);
     }
