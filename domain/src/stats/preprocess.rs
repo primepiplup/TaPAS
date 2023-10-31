@@ -52,7 +52,7 @@ pub fn date_data_processing(
     data_processing(numeric_data)
 }
 
-pub fn into_categorical(datasets: Vec<(Vec<Datapoint>, ParsedQuery)>) -> Vec<(Vec<f64>, String)> {
+pub fn into_categorical(datasets: &Vec<(Vec<Datapoint>, ParsedQuery)>) -> Vec<(Vec<f64>, String)> {
     let mut collector: Vec<(Vec<f64>, String)> = Vec::new();
     for (datapoints, query) in datasets {
         let values: Vec<f64>;
@@ -85,7 +85,7 @@ mod test {
         collector.push(datastore.query("coffee"));
         collector.push(datastore.query("tea"));
 
-        let titled_data = into_categorical(collector);
+        let titled_data = into_categorical(&collector);
 
         assert_eq!(titled_data[0].0[0], 6.0);
         assert_eq!(titled_data[0].0[1], 7.0);
