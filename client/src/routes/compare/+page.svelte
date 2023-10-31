@@ -1,6 +1,7 @@
 <script lang='ts'>
   import Error from "../error.svelte";
-  let image: {filename: string};
+    import Summary from "./summary.svelte";
+  let comparison_result: {filename: string, summaries: {name: string, mean: number, p: number}[]};
   let status: number;
 	let inputs: string[] = [""];
 
@@ -16,7 +17,7 @@
       body: JSON.stringify(requestBody),
     });
     status = response.status;
-    image = await response.json();
+    comparison_result = await response.json();
   };
 
 </script>
@@ -34,9 +35,31 @@
   <br/>
 </div>
 
+{#if comparison_result}
+<div class="results">
+  <table class="summary-table">
+    <thead>
+      <tr class="header">
+        <th colspan=2>Statistical Summary</th>
+      </tr>
+      <tr class="column-names">
+        <th>Group</th>
+        <th>Mean</th>
+        <th>p-value</th>
+      </tr>
+    </thead>
+    <tbody>
+        {#each comparison_result.summaries as summary}
+          <Summary summary={summary} />
+        {/each}
+    </tbody>
+  </table>
+</div>
+{/if}
+
 <div class="image">
-  {#if image && status < 300}
-   <img src={"/plot/" + image.filename} alt="cool plot" />
+  {#if comparison_result && status < 300}
+   <img src={"/plot/" + comparison_result.filename} alt="cool plot" />
   {/if}
 </div>
 
@@ -54,6 +77,25 @@
 
 
 <style>
+  .header {
+    font-weight: bold;
+  }
+
+  .column-names {
+    font-weight: normal;
+  }
+
+  .results {
+    align-content: center;
+  }
+  
+  .summary-table {
+    color: #D1AC00;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
+  }
+  
   div {
     padding-top: 1em;
     text-align: center;
@@ -67,11 +109,6 @@
   .text {
     color: #D1AC00;
     font-weight: bold;
-  }
-
-  label {
-    color: #D1AC00;
-    font-style: italic;
   }
 
   .form {

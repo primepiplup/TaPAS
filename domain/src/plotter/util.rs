@@ -39,18 +39,6 @@ pub fn get_numeric_data(data: &Vec<Datapoint>) -> Option<(Vec<DateTime<Local>>, 
     Some((date_collector, number_collector))
 }
 
-pub fn generate_plot_title(parsed_query: Vec<Vec<String>>) -> String {
-    format!("Plot for: {}", collect_query(parsed_query))
-}
-
-pub fn collect_query(parsed_query: Vec<Vec<String>>) -> String {
-    parsed_query
-        .into_iter()
-        .map(|elem| elem[0].clone())
-        .collect::<Vec<String>>()
-        .join(", ")
-}
-
 pub fn apply_margin((lower, upper): (f64, f64)) -> (f64, f64) {
     let margin = (upper - lower) / 10.0;
     (lower - margin, upper + margin)
@@ -78,19 +66,6 @@ mod test {
         let filename = generate_filename(datetime);
 
         assert_eq!(filename, "20231016100632.png".to_string());
-    }
-
-    #[test]
-    fn generate_plot_title_takes_all_elements_of_vector_and_returns_title() {
-        let parsed = vec![
-            vec!["something".to_string(), "value".to_string()],
-            vec!["tag".to_string()],
-            vec!["else".to_string()],
-        ];
-
-        let title = generate_plot_title(parsed);
-
-        assert_eq!(title, "Plot for: something, tag, else")
     }
 
     #[test]

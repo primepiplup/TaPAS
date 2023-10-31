@@ -1,11 +1,14 @@
 mod datapoint_dto;
+mod summary_dto;
 
 use crate::datapoint_dto::{dto_vec_from, DatapointDTO};
+use crate::summary_dto::SummaryDTO;
 use chrono::{Local, NaiveDateTime};
-use domain::analysis::linear_regression;
 use domain::datastore::Datastore;
 use domain::plotter::categorical::categorical_plot;
 use domain::plotter::scatterplot::scatterplot;
+use domain::stats::model_fit::linear_regression;
+use domain::stats::stats::compare;
 use persistence::dbmanager::DBManager;
 use rocket::fs::{relative, FileServer};
 use rocket::http::Status;
@@ -61,6 +64,13 @@ struct PredictionForm<'a> {
 #[serde(crate = "rocket::serde")]
 struct Image {
     filename: String,
+}
+
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
+struct ComparisonResults {
+    filename: String,
+    summaries: Vec<SummaryDTO>,
 }
 
 #[derive(Serialize)]
@@ -128,20 +138,34 @@ fn plot(
 fn comparison(
     form_input: Json<CompareForm<'_>>,
     datastorage: &State<Datastore>,
-) -> status::Custom<Json<Image>> {
+) -> status::Custom<Json<ComparisonResults>> {
     let mut collector = Vec::new();
     for query in form_input.queries.clone() {
         collector.push(datastorage.query(query));
     }
-    match categorical_plot(collector) {
-        Some(filename) => status::Custom(Status::Ok, Json(Image { filename })),
-        None => status::Custom(
-            Status::BadRequest,
-            Json(Image {
-                filename: "error".to_string(),
-            }),
-        ),
-    }
+    let filename = match categorical_plot(&collector) {
+        Some(filename) => filename,
+        None => {
+            return status::Custom(
+                Status::Ok,
+                Json(ComparisonResults {
+                    filename: "none".to_string(),
+                    summaries: Vec::new(),
+                }),
+            )
+        }
+    };
+    let summaries = compare(&collector)
+        .into_iter()
+        .map(|summary| SummaryDTO::from(summary))
+        .collect();
+    status::Custom(
+        Status::Ok,
+        Json(ComparisonResults {
+            filename,
+            summaries,
+        }),
+    )
 }
 
 #[post("/predict", format = "application/json", data = "<form_input>")]
