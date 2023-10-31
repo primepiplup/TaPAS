@@ -1,4 +1,6 @@
-use crate::stats::t_distribution::TTable;
+use crate::{datapoint::Datapoint, parsedquery::ParsedQuery, stats::t_distribution::TTable};
+
+use super::{preprocess::into_categorical, summary::Summary};
 
 pub fn sum_of_squares<'a>(
     data: &Vec<(f64, f64)>,
@@ -57,21 +59,53 @@ pub fn pooled_two_sample_t_test(sample_1: &Vec<f64>, sample_2: &Vec<f64>) -> (f6
     return (t, dof);
 }
 
-pub fn compare(samples: Vec<(Vec<f64>, String)>) -> bool {
-    let t_table = TTable::new();
+pub fn compare(samples: &Vec<(Vec<Datapoint>, ParsedQuery)>) -> Vec<Summary> {
+    let samples = into_categorical(samples);
     if samples.len() == 2 {
-        let (t_found, dof) = pooled_two_sample_t_test(&samples[0].0, &samples[1].0);
-        let t = t_table.get_t_for(dof, 0.05);
-        return t_found.abs() > t;
+        two_group_comparison(samples)
     } else {
-        false
+        Vec::new()
     }
+}
+
+fn two_group_comparison(samples: Vec<(Vec<f64>, String)>) -> Vec<Summary> {
+    let ttable = TTable::new();
+    let (t, dof) = pooled_two_sample_t_test(&samples[0].0, &samples[1].0);
+    let p = ttable.get_p_for(dof, t);
+    let summary1 = Summary::from(samples[0].0.clone())
+        .set_name(samples[0].1.clone())
+        .set_p(p);
+    let summary2 = Summary::from(samples[1].0.clone())
+        .set_name(samples[1].1.clone())
+        .set_p(p);
+    vec![summary1, summary2]
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::linearfunction::linear_equation;
+    use crate::{datastore::Datastore, linearfunction::linear_equation};
+
+    #[test]
+    fn comparison_between_two_samples_provides_accurate_summaries() {
+        let datastore: Datastore = Datastore::new();
+        datastore.add_datapoint("40 +one");
+        datastore.add_datapoint("41 +one");
+        datastore.add_datapoint("39 +one");
+        datastore.add_datapoint("30 +two");
+        datastore.add_datapoint("31 +two");
+        datastore.add_datapoint("29 +two");
+        let mut collector = Vec::new();
+        collector.push(datastore.query("one"));
+        collector.push(datastore.query("two"));
+
+        let summaries = compare(&collector);
+
+        assert_eq!(summaries[0].get_mean(), 40.0);
+        assert_eq!(summaries[0].get_p(), 0.001);
+        assert_eq!(summaries[1].get_mean(), 30.0);
+        assert_eq!(summaries[1].get_p(), 0.001);
+    }
 
     #[test]
     fn pooled_two_sample_t_test_is_accurate() {
