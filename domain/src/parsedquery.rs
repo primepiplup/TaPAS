@@ -61,6 +61,9 @@ impl ParsedQuery {
     fn without_excluded_tags(&self) -> Vec<String> {
         let mut collector: Vec<String> = Vec::new();
         for tag in self.query.clone() {
+            if tag[0] == "*" {
+                continue;
+            }
             if tag.len() > 1 {
                 match tag[1].as_str() {
                     "exclude" => continue,
