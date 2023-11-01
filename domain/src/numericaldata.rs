@@ -5,14 +5,6 @@ pub struct NumericalData {
     title: String,
 }
 
-impl From<QueryResult> for NumericalData {
-    fn from(queryresult: QueryResult) -> NumericalData {
-        let data = queryresult.get_numeric_data();
-        let title = queryresult.get_query().generate_plot_title();
-        NumericalData { data, title }
-    }
-}
-
 impl From<&QueryResult> for NumericalData {
     fn from(queryresult: &QueryResult) -> NumericalData {
         let data = queryresult.get_numeric_data();
