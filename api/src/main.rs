@@ -113,8 +113,8 @@ async fn update(
 
 #[post("/query", format = "application/json", data = "<form_input>")]
 fn query(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> Json<Vec<DatapointDTO>> {
-    let (datapoints, _parsed) = datastorage.query(form_input.value);
-    Json(dto_vec_from(datapoints))
+    let queryresult = datastorage.query(form_input.value);
+    Json(dto_vec_from(queryresult.get_datapoints()))
 }
 
 #[post("/plot", format = "application/json", data = "<form_input>")]
@@ -122,8 +122,8 @@ fn plot(
     form_input: Json<PlotRequest<'_>>,
     datastorage: &State<Datastore>,
 ) -> status::Custom<Json<Image>> {
-    let (datapoints, parsed) = datastorage.query(form_input.value);
-    match scatterplot(&datapoints, parsed, form_input.with_regression) {
+    let queryresult = datastorage.query(form_input.value);
+    match scatterplot(&queryresult, form_input.with_regression) {
         Ok(filename) => status::Custom(Status::Ok, Json(Image { filename })),
         Err(_) => status::Custom(
             Status::InternalServerError,
@@ -173,8 +173,9 @@ fn predict(
     form_input: Json<PredictionForm<'_>>,
     datastorage: &State<Datastore>,
 ) -> status::Custom<Json<Prediction>> {
-    let (datapoints, _) = datastorage.query(form_input.query);
-    let data = datapoints
+    let queryresult = datastorage.query(form_input.query);
+    let data = queryresult
+        .get_datapoints()
         .into_iter()
         .map(|datapoint| {
             (
