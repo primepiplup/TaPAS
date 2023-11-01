@@ -1,6 +1,5 @@
-use crate::datapoint::Datapoint;
-use crate::parsedquery::ParsedQuery;
-use crate::plotter::util::*;
+use crate::numericaldata::NumericalData;
+use crate::queryresult::QueryResult;
 use chrono::{DateTime, Local};
 use plotters::prelude::LogScalable;
 
@@ -52,16 +51,13 @@ pub fn date_data_processing(
     data_processing(numeric_data)
 }
 
-pub fn into_categorical(datasets: &Vec<(Vec<Datapoint>, ParsedQuery)>) -> Vec<(Vec<f64>, String)> {
-    let mut collector: Vec<(Vec<f64>, String)> = Vec::new();
-    for (datapoints, query) in datasets {
-        let values: Vec<f64>;
-        match get_numeric_data(&datapoints) {
-            Some((_, data)) => values = data,
-            None => continue,
-        };
-        let title = query.collect_query();
-        collector.push((values, title));
+pub fn into_categorical(datasets: &Vec<QueryResult>) -> Vec<NumericalData> {
+    let mut collector: Vec<NumericalData> = Vec::new();
+    for dataset in datasets {
+        let numericdata = NumericalData::from(dataset);
+        if !numericdata.is_empty() {
+            collector.push(numericdata);
+        }
     }
     return collector;
 }
@@ -76,7 +72,7 @@ mod test {
     #[test]
     fn into_categorical_takes_a_vector_of_retrieved_datasets_and_queries_and_returns_titled_data_vectors(
     ) {
-        let mut collector: Vec<(Vec<Datapoint>, ParsedQuery)> = Vec::new();
+        let mut collector: Vec<QueryResult> = Vec::new();
         let datastore = Datastore::new();
         datastore.add_datapoint("6 hours +coffee");
         datastore.add_datapoint("7 hours +coffee");
@@ -87,12 +83,12 @@ mod test {
 
         let titled_data = into_categorical(&collector);
 
-        assert_eq!(titled_data[0].0[0], 6.0);
-        assert_eq!(titled_data[0].0[1], 7.0);
-        assert_eq!(titled_data[1].0[0], 7.0);
-        assert_eq!(titled_data[1].0[1], 8.0);
-        assert_eq!(titled_data[0].1, "coffee".to_string());
-        assert_eq!(titled_data[1].1, "tea".to_string());
+        assert_eq!(titled_data[0].get_data()[0], 6.0);
+        assert_eq!(titled_data[0].get_data()[1], 7.0);
+        assert_eq!(titled_data[1].get_data()[0], 7.0);
+        assert_eq!(titled_data[1].get_data()[1], 8.0);
+        assert_eq!(titled_data[0].get_title(), "coffee".to_string());
+        assert_eq!(titled_data[1].get_title(), "tea".to_string());
     }
 
     #[test]
