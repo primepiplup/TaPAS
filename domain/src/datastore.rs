@@ -1,5 +1,6 @@
 use crate::datapoint::{create_datapoint, Datapoint};
 use crate::parsedquery::ParsedQuery;
+use crate::queryresult::QueryResult;
 use std::sync::{Mutex, MutexGuard};
 
 pub struct Datastore {
@@ -57,19 +58,19 @@ impl Datastore {
         lock.clone()
     }
 
-    pub fn query(&self, query: &str) -> (Vec<Datapoint>, ParsedQuery) {
+    pub fn query(&self, query: &str) -> QueryResult {
         let mut collector: Vec<Datapoint> = Vec::new();
         let parsed: ParsedQuery = ParsedQuery::from(query);
         let datapoints: Vec<Datapoint> = self.retrieve_datapoints();
         if parsed.empty() {
-            return (datapoints, parsed);
+            return QueryResult::from(datapoints, parsed);
         }
         for datapoint in datapoints {
             if parsed.can_all_be_found_in(datapoint.get_tags()) {
                 collector.push(datapoint.clone());
             }
         }
-        apply_query_commands(collector, parsed)
+        QueryResult::from(collector, parsed).apply_query_commands()
     }
 
     fn append_tags(&self, tags: &Vec<String>) -> () {
@@ -127,44 +128,6 @@ fn insert_sorted_by_time<'a>(datapoint: Datapoint, vector: &mut MutexGuard<'a, V
     }
 }
 
-fn apply_query_commands(
-    datapoints: Vec<Datapoint>,
-    queries: ParsedQuery,
-) -> (Vec<Datapoint>, ParsedQuery) {
-    let mut transformed = datapoints;
-    for element in &queries.get_raw_parsed() {
-        if element.len() > 1 {
-            transformed = apply_command(transformed, element[1].clone(), element[0].clone());
-        }
-    }
-    (transformed, queries)
-}
-
-fn apply_command(datapoints: Vec<Datapoint>, command: String, tag: String) -> Vec<Datapoint> {
-    match command.as_str() {
-        "value" => strip_non_numeric(datapoints),
-        "exclude" => remove_where_tag(datapoints, tag),
-        _ => datapoints,
-    }
-}
-
-fn strip_non_numeric(datapoints: Vec<Datapoint>) -> Vec<Datapoint> {
-    datapoints
-        .into_iter()
-        .map(|point| point.get_non_numeric_stripped())
-        .collect()
-}
-
-fn remove_where_tag(datapoints: Vec<Datapoint>, tag: String) -> Vec<Datapoint> {
-    let mut collector = Vec::new();
-    for datapoint in datapoints {
-        if !datapoint.get_tags().contains(&tag) {
-            collector.push(datapoint);
-        }
-    }
-    return collector;
-}
-
 #[cfg(test)]
 mod tests {
     use crate::datapoint;
@@ -177,7 +140,8 @@ mod tests {
         datastore.add_datapoint("data +one +two");
         datastore.add_datapoint("more +one");
 
-        let (found, _) = datastore.query("one two:exclude");
+        let queryresult = datastore.query("one two:exclude");
+        let found = queryresult.get_datapoints();
 
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].get_data(), "more");
@@ -259,33 +223,11 @@ mod tests {
         datastore.add_datapoint("cool information +tag");
         datastore.add_datapoint("More cool information +tag");
 
-        let (datapoints, _) = datastore.query("+");
+        let queryresult = datastore.query("+");
+        let datapoints = queryresult.get_datapoints();
 
         assert_eq!("cool information", datapoints[0].get_data());
         assert_eq!("More cool information", datapoints[1].get_data());
-    }
-
-    #[test]
-    fn apply_command_with_unknown_command_returns_full_datapoint_vector() {
-        let datastore = Datastore::new();
-        datastore.add_datapoint("cool information +tag");
-        datastore.add_datapoint("More cool information +tag");
-        let datapoints = datastore.retrieve_datapoints();
-
-        let datapoints_after_command = apply_command(
-            datapoints.clone(),
-            "Unknown".to_string(),
-            "Whatever".to_string(),
-        );
-
-        assert_eq!(
-            datapoints[0].get_data(),
-            datapoints_after_command[0].get_data()
-        );
-        assert_eq!(
-            datapoints[1].get_data(),
-            datapoints_after_command[1].get_data()
-        );
     }
 
     #[test]
@@ -371,20 +313,10 @@ mod tests {
         datastore.add_datapoint("80kg +weight");
         datastore.add_datapoint("8kg +curl");
 
-        let (retrieved, _) = datastore.query("curl:value");
+        let queryresult = datastore.query("curl:value");
+        let retrieved = queryresult.get_datapoints();
 
         assert_eq!(retrieved[0].get_data(), "8");
-    }
-
-    #[test]
-    fn value_command_strips_non_numeric_information_from_data() {
-        let datastore = Datastore::new();
-        datastore.add_datapoint("80kg +weight");
-
-        let datapoints = datastore.retrieve_datapoints();
-        let valuestripped = apply_command(datapoints, "value".to_owned(), "weight".to_string());
-
-        assert_eq!(valuestripped[0].get_data(), "80");
     }
 
     #[test]
@@ -394,7 +326,8 @@ mod tests {
         datastore.add_datapoint("information +with +tags");
         datastore.add_datapoint("information +different");
 
-        let (query_result, _) = datastore.query("+different");
+        let queryresult = datastore.query("+different");
+        let query_result = queryresult.get_datapoints();
 
         assert_eq!(1, query_result.len());
     }
@@ -406,7 +339,8 @@ mod tests {
         datastore.add_datapoint("information +with +tags");
         datastore.add_datapoint("information +different");
 
-        let (query_result, _) = datastore.query("different");
+        let queryresult = datastore.query("different");
+        let query_result = queryresult.get_datapoints();
 
         assert_eq!(1, query_result.len());
     }
