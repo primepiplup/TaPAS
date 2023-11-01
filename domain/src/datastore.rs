@@ -59,7 +59,7 @@ impl Datastore {
 
     pub fn query(&self, query: &str) -> (Vec<Datapoint>, ParsedQuery) {
         let mut collector: Vec<Datapoint> = Vec::new();
-        let parsed: ParsedQuery = query_parser(query);
+        let parsed: ParsedQuery = ParsedQuery::from(query);
         let datapoints: Vec<Datapoint> = self.retrieve_datapoints();
         if parsed.empty() {
             return (datapoints, parsed);
@@ -125,15 +125,6 @@ fn insert_sorted_by_time<'a>(datapoint: Datapoint, vector: &mut MutexGuard<'a, V
         }
         vector.insert(0, datapoint.clone());
     }
-}
-
-fn query_parser(query: &str) -> ParsedQuery {
-    let plus_replaced = query.trim().replace("+", " ");
-    let parsed: Vec<Vec<String>> = plus_replaced
-        .split_whitespace()
-        .map(|s| s.split(":").map(|s| s.to_string()).collect())
-        .collect();
-    return ParsedQuery::from(parsed);
 }
 
 fn apply_query_commands(
@@ -394,38 +385,6 @@ mod tests {
         let valuestripped = apply_command(datapoints, "value".to_owned(), "weight".to_string());
 
         assert_eq!(valuestripped[0].get_data(), "80");
-    }
-
-    #[test]
-    fn query_parser_removes_plusses() {
-        let mut expected: Vec<&str> = Vec::new();
-        expected.push("tag");
-
-        let parsed: Vec<String> = query_parser("+tag").get_parsed_tags();
-
-        assert_eq!(expected, parsed);
-    }
-
-    #[test]
-    fn query_parser_separates_on_whitespace() {
-        let mut expected: Vec<&str> = Vec::new();
-        expected.push("tag");
-        expected.push("another");
-
-        let parsed: Vec<String> = query_parser("+tag another").get_parsed_tags();
-
-        assert_eq!(expected, parsed);
-    }
-
-    #[test]
-    fn query_parser_separates_on_plusses() {
-        let mut expected: Vec<&str> = Vec::new();
-        expected.push("tag");
-        expected.push("another");
-
-        let parsed: Vec<String> = query_parser("+tag+another").get_parsed_tags();
-
-        assert_eq!(expected, parsed);
     }
 
     #[test]
