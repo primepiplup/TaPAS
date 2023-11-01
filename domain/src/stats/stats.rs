@@ -1,4 +1,6 @@
-use crate::{datapoint::Datapoint, parsedquery::ParsedQuery, stats::t_distribution::TTable};
+use crate::{
+    numericaldata::NumericalData, queryresult::QueryResult, stats::t_distribution::TTable,
+};
 
 use super::{preprocess::into_categorical, summary::Summary};
 
@@ -59,7 +61,7 @@ pub fn pooled_two_sample_t_test(sample_1: &Vec<f64>, sample_2: &Vec<f64>) -> (f6
     return (t, dof);
 }
 
-pub fn compare(samples: &Vec<(Vec<Datapoint>, ParsedQuery)>) -> Vec<Summary> {
+pub fn compare(samples: &Vec<QueryResult>) -> Vec<Summary> {
     let samples = into_categorical(samples);
     if samples.len() == 2 {
         two_group_comparison(samples)
@@ -68,15 +70,15 @@ pub fn compare(samples: &Vec<(Vec<Datapoint>, ParsedQuery)>) -> Vec<Summary> {
     }
 }
 
-fn two_group_comparison(samples: Vec<(Vec<f64>, String)>) -> Vec<Summary> {
+fn two_group_comparison(samples: Vec<NumericalData>) -> Vec<Summary> {
     let ttable = TTable::new();
-    let (t, dof) = pooled_two_sample_t_test(&samples[0].0, &samples[1].0);
+    let (t, dof) = pooled_two_sample_t_test(&samples[0].get_data(), &samples[1].get_data());
     let p = ttable.get_p_for(dof, t.abs());
-    let summary1 = Summary::from(samples[0].0.clone())
-        .set_name(samples[0].1.clone())
+    let summary1 = Summary::from(samples[0].get_data().clone())
+        .set_name(samples[0].get_title().clone())
         .set_p(p);
-    let summary2 = Summary::from(samples[1].0.clone())
-        .set_name(samples[1].1.clone())
+    let summary2 = Summary::from(samples[1].get_data().clone())
+        .set_name(samples[1].get_title().clone())
         .set_p(p);
     vec![summary1, summary2]
 }
