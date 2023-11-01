@@ -1,3 +1,5 @@
+use chrono::NaiveDate;
+
 use crate::{datapoint::Datapoint, parsedquery::ParsedQuery};
 
 pub struct QueryResult {
@@ -14,7 +16,7 @@ impl QueryResult {
         let mut transformed = self.datapoints;
         for element in self.query.get_raw_parsed() {
             if element.len() > 1 {
-                transformed = apply_command(transformed, element[1].clone(), element[0].clone());
+                transformed = apply_command(transformed, element);
             }
         }
         QueryResult::from(transformed, self.query)
@@ -45,12 +47,52 @@ impl QueryResult {
     }
 }
 
-fn apply_command(datapoints: Vec<Datapoint>, command: String, tag: String) -> Vec<Datapoint> {
-    match command.as_str() {
+fn apply_command(datapoints: Vec<Datapoint>, command: Vec<String>) -> Vec<Datapoint> {
+    match command[1].to_lowercase().as_str() {
+        "date" => select_for_date(datapoints, command),
         "value" => strip_non_numeric(datapoints),
-        "exclude" => remove_where_tag(datapoints, tag),
+        "exclude" => remove_where_tag(datapoints, command[0].clone()),
         _ => datapoints,
     }
+}
+
+fn select_for_date(datapoints: Vec<Datapoint>, command: Vec<String>) -> Vec<Datapoint> {
+    if command.len() < 4 {
+        return datapoints;
+    }
+    match command[2].to_lowercase().as_str() {
+        "start" => from_date(datapoints, command[3].clone(), true),
+        "from" => from_date(datapoints, command[3].clone(), true),
+        "till" => from_date(datapoints, command[3].clone(), false),
+        "until" => from_date(datapoints, command[3].clone(), false),
+        "end" => from_date(datapoints, command[3].clone(), false),
+        _ => datapoints,
+    }
+}
+
+fn from_date(datapoints: Vec<Datapoint>, date: String, return_before: bool) -> Vec<Datapoint> {
+    let date = match NaiveDate::parse_from_str(&date, "%Y-%m-%d") {
+        Ok(date) => date,
+        Err(_) => return datapoints,
+    };
+    let datetime = if return_before {
+        date.and_hms_opt(0, 0, 0).expect("00:00:00 is invalid")
+    } else {
+        date.and_hms_opt(23, 59, 59).expect("23:59:59 is invalid")
+    };
+    let mut location = 0;
+    while location < datapoints.len()
+        && datapoints[location].get_datetime().naive_local() < datetime
+    {
+        location += 1;
+    }
+    let mut before = datapoints.clone();
+    let after = before.drain(0..location).collect();
+    if return_before {
+        return before;
+    } else {
+        return after;
+    };
 }
 
 fn strip_non_numeric(datapoints: Vec<Datapoint>) -> Vec<Datapoint> {
@@ -74,6 +116,111 @@ fn remove_where_tag(datapoints: Vec<Datapoint>, tag: String) -> Vec<Datapoint> {
 mod tests {
     use super::*;
     use crate::datastore::Datastore;
+
+    #[test]
+    fn malformed_date_in_query_returns_all() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("one +DATE:2023-10-10");
+        datastore.add_datapoint("two +DATE:2023-10-11");
+        datastore.add_datapoint("three +DATE:2023-10-14");
+        let datapoints = datastore.retrieve_datapoints();
+
+        let queryresult = datastore.query("*:DATE:FROM:2023-qwoop-10");
+        let queryresult_datapoints = queryresult.get_datapoints();
+
+        assert_eq!(queryresult_datapoints, datapoints);
+    }
+
+    #[test]
+    fn incorrect_from_specifier_in_query_returns_all() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("one +DATE:2023-10-10");
+        datastore.add_datapoint("two +DATE:2023-10-11");
+        datastore.add_datapoint("three +DATE:2023-10-14");
+        let datapoints = datastore.retrieve_datapoints();
+
+        let queryresult = datastore.query("*:DATE:FRUMPL:2023-10-11");
+        let queryresult_datapoints = queryresult.get_datapoints();
+
+        assert_eq!(queryresult_datapoints, datapoints);
+    }
+
+    #[test]
+    fn incorrect_date_selector_in_query_returns_all() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("one +DATE:2023-10-10");
+        datastore.add_datapoint("two +DATE:2023-10-11");
+        datastore.add_datapoint("three +DATE:2023-10-14");
+        let datapoints = datastore.retrieve_datapoints();
+
+        let queryresult = datastore.query("*:DATE:2023-10-11");
+        let queryresult_datapoints = queryresult.get_datapoints();
+
+        assert_eq!(queryresult_datapoints, datapoints);
+    }
+
+    #[test]
+    fn from_selector_in_query_allows_selection_based_on_date() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("one +DATE:2023-10-10");
+        datastore.add_datapoint("two +DATE:2023-10-11");
+        datastore.add_datapoint("three +DATE:2023-10-14");
+        let datapoints = datastore.retrieve_datapoints();
+
+        let queryresult = datastore.query("*:DATE:FROM:2023-10-11");
+        let queryresult_datapoints = queryresult.get_datapoints();
+
+        assert_eq!(queryresult_datapoints[0], datapoints[1]);
+        assert_eq!(queryresult_datapoints[1], datapoints[2]);
+    }
+
+    #[test]
+    fn different_selectors_allow_date_before_selection_like_from() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("one +DATE:2023-10-10");
+        datastore.add_datapoint("two +DATE:2023-10-12");
+        datastore.add_datapoint("three +DATE:2023-10-14");
+
+        let queryresult = datastore.query("*:DATE:FROM:2023-10-11");
+        let datapoints_from = queryresult.get_datapoints();
+        let queryresult = datastore.query("*:DATE:START:2023-10-11");
+        let datapoints_start = queryresult.get_datapoints();
+
+        assert_eq!(datapoints_from, datapoints_start);
+    }
+
+    #[test]
+    fn until_selector_in_query_allows_selection_based_on_date() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("one +DATE:2023-10-10");
+        datastore.add_datapoint("two +DATE:2023-10-12");
+        datastore.add_datapoint("three +DATE:2023-10-13");
+        let datapoints = datastore.retrieve_datapoints();
+
+        let queryresult = datastore.query("*:DATE:UNTIL:2023-10-13");
+        let queryresult_datapoints = queryresult.get_datapoints();
+
+        assert_eq!(queryresult_datapoints[0], datapoints[0]);
+        assert_eq!(queryresult_datapoints[1], datapoints[1]);
+    }
+
+    #[test]
+    fn different_selectors_in_query_allows_selection_like_until() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("one +DATE:2023-10-10");
+        datastore.add_datapoint("two +DATE:2023-10-12");
+        datastore.add_datapoint("three +DATE:2023-10-14");
+
+        let queryresult = datastore.query("*:DATE:UNTIL:2023-10-13");
+        let datapoints_until = queryresult.get_datapoints();
+        let queryresult = datastore.query("*:DATE:END:2023-10-13");
+        let datapoints_end = queryresult.get_datapoints();
+        let queryresult = datastore.query("*:DATE:TILL:2023-10-13");
+        let datapoints_till = queryresult.get_datapoints();
+
+        assert_eq!(datapoints_until, datapoints_end);
+        assert_eq!(datapoints_until, datapoints_till);
+    }
 
     #[test]
     fn get_datapoints_returns_a_vector_of_contained_datapoints() {
@@ -109,8 +256,7 @@ mod tests {
 
         let datapoints_after_command = apply_command(
             datapoints.clone(),
-            "Unknown".to_string(),
-            "Whatever".to_string(),
+            vec!["Whatever".to_string(), "Unknown".to_string()],
         );
 
         assert_eq!(
@@ -129,7 +275,8 @@ mod tests {
         datastore.add_datapoint("80kg +weight");
 
         let datapoints = datastore.retrieve_datapoints();
-        let valuestripped = apply_command(datapoints, "value".to_owned(), "weight".to_string());
+        let valuestripped =
+            apply_command(datapoints, vec!["weight".to_string(), "value".to_owned()]);
 
         assert_eq!(valuestripped[0].get_data(), "80");
     }
