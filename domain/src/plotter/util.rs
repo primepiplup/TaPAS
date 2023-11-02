@@ -20,10 +20,6 @@ pub fn get_upper_lower<T: Copy + PartialOrd>(points: &Vec<T>) -> (T, T) {
 }
 
 pub fn get_numeric_data(data: &Vec<Datapoint>) -> Option<(Vec<DateTime<Local>>, Vec<f64>)> {
-    if data.len() < 1 {
-        return None;
-    }
-
     let mut number_collector = Vec::new();
     let mut date_collector = Vec::new();
     for datapoint in data {
@@ -34,6 +30,10 @@ pub fn get_numeric_data(data: &Vec<Datapoint>) -> Option<(Vec<DateTime<Local>>, 
             }
             Err(_) => (),
         };
+    }
+
+    if date_collector.len() < 1 {
+        return None;
     }
 
     Some((date_collector, number_collector))

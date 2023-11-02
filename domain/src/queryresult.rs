@@ -1,4 +1,4 @@
-use chrono::NaiveDate;
+use chrono::prelude::*;
 
 use crate::{datapoint::Datapoint, parsedquery::ParsedQuery};
 
@@ -44,6 +44,23 @@ impl QueryResult {
         }
 
         return number_collector;
+    }
+
+    pub fn get_date_numeric_data(&self) -> Option<Vec<(DateTime<Local>, f64)>> {
+        let datapoints = self.get_datapoints();
+        if datapoints.len() == 0 {
+            return None;
+        }
+        let mut collector: Vec<(DateTime<Local>, f64)> = Vec::new();
+        for datapoint in datapoints {
+            let datetime = datapoint.get_datetime().to_owned();
+            let value = match datapoint.get_as_numeric() {
+                Ok(value) => value,
+                Err(_) => return None,
+            };
+            collector.push((datetime, value));
+        }
+        return Some(collector);
     }
 }
 
