@@ -135,6 +135,60 @@ mod tests {
     use crate::datastore::Datastore;
 
     #[test]
+    fn getting_date_numeric_returns_a_vector_of_associated_datetime_value_tuples() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("1 +value +DATE:2023-10-10");
+        datastore.add_datapoint("2 +value +DATE:2023-10-11");
+        datastore.add_datapoint("3 +value +DATE:2023-10-14");
+        let queryresult = datastore.query("+value");
+
+        let data = queryresult.get_date_numeric_data().unwrap();
+
+        assert_eq!(data[0].1, 1.0);
+        assert_eq!(data[1].1, 2.0);
+        assert_eq!(data[2].1, 3.0);
+    }
+
+    #[test]
+    fn getting_date_numeric_for_invalid_data_returns_none() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("11.1.4 +value +DATE:2023-10-10");
+        datastore.add_datapoint("0.1 +value +DATE:2023-10-11");
+        datastore.add_datapoint("8.9 +value +DATE:2023-10-14");
+        let queryresult = datastore.query("+value");
+
+        let data = queryresult.get_date_numeric_data();
+
+        assert_eq!(data, None);
+    }
+
+    #[test]
+    fn getting_date_numeric_for_non_numeric_data_returns_none() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("words and not numbers +value +DATE:2023-10-10");
+        datastore.add_datapoint("more words +value +DATE:2023-10-11");
+        datastore.add_datapoint("where are the numbers +value +DATE:2023-10-14");
+        let queryresult = datastore.query("+value");
+
+        let data = queryresult.get_date_numeric_data();
+
+        assert_eq!(data, None);
+    }
+
+    #[test]
+    fn getting_date_numeric_for_an_empty_query_returns_none() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("32.1 +value +DATE:2023-10-10");
+        datastore.add_datapoint("6 +value +DATE:2023-10-11");
+        datastore.add_datapoint("8.1 +value +DATE:2023-10-14");
+        let queryresult = datastore.query("+invalid");
+
+        let data = queryresult.get_date_numeric_data();
+
+        assert_eq!(data, None);
+    }
+
+    #[test]
     fn malformed_date_in_query_returns_all() {
         let datastore = Datastore::new();
         datastore.add_datapoint("one +DATE:2023-10-10");
