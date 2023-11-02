@@ -4,11 +4,13 @@
   let value: string = "";
   let targetGoal: number;
   let status: number;
+  let dateFrom: string;
+  let dateUntil: string;
 
   async function sendPlotQuery() {
     prediction = undefined;
     let requestBody = {
-      fieldInput: value ? value : "",
+      fieldInput: (value ? value : "") + generateAppendable(),
       targetGoal: targetGoal ? targetGoal : 0,
     };
     let response = await fetch("api/predict", {
@@ -22,15 +24,30 @@
     prediction = await response.json();
   };
 
+  function generateAppendable(): string {
+    let text = "";
+    if(dateFrom) {
+      text += " *:DATE:FROM:" + dateFrom;
+    }
+    if(dateUntil) {
+      text += " *:DATE:UNTIL:" + dateUntil;
+    }
+    return text;
+  }
 </script>
 
 <div class="inputfield">
   <p class="text">Input a query for which to estimate a future value</p>
   <span class="text">Query/Tag: </span>
   <input type="text" class="form" bind:value on:keydown={e => { if(e.key == "Enter") {sendPlotQuery()} } }>
-  <br/>
+  <div class="formtext">
+    <span class="text">From: 
+    <input type="date" class=dateform bind:value={dateFrom} /></span>
+    <span class="text">Until: 
+    <input type="date" class=dateform bind:value={dateUntil} /></span>
+  </div>  
   <span class="text">Goal value: </span>
-  <input type="number" class="form" bind:value={targetGoal} />
+  <input type="number" class="form" id="goalvalue" bind:value={targetGoal} />
   <br/>
   <button on:click={ sendPlotQuery } class="request">Send Request</button>
 </div>
@@ -61,7 +78,6 @@
 
 <style>
   div {
-    padding-top: 1em;
     text-align: center;
   }
 
@@ -69,16 +85,6 @@
     background: linear-gradient(180deg, #285a58 0%, #004643 50%);
     border: 2px solid #D1AC00;
     padding: 20px;  }
-
-  .text {
-    color: #D1AC00;
-    font-weight: bold;
-  }
-
-  label {
-    color: #D1AC00;
-    font-style: italic;
-  }
 
   .prediction {
     background: linear-gradient(180deg, #285a58 0%, #004643 50%);
@@ -113,4 +119,28 @@
     color: #FAF4D3;
   }
 
+  .formtext {
+    color: #D1AC00;
+    font-weight: bold;
+    margin-top: 5px;
+    margin-bottom: 5px;
+  }
+
+  .text {
+    color: #D1AC00;
+    font-weight: bold;
+    margin-right: 5px;
+  }
+
+  .dateform {
+    background-color: #0C1618;
+    border: 2px solid #D1AC00;
+    text-align: center;
+    color: #FAF4D3;
+    font-weight: bold;
+  }
+
+  #goalvalue {
+    margin-top: 10px;
+  }
 </style>
