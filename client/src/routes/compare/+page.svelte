@@ -1,6 +1,7 @@
 <script lang='ts'>
   import Error from "../error.svelte";
-    import Summary from "./summary.svelte";
+  import Summary from "./summary.svelte";
+  import Inputfield from "./inputfield.svelte";
   let comparison_result: {filename: string, summaries: {name: string, mean: number, p: number}[]};
   let status: number;
 	let inputs: string[] = [""];
@@ -25,7 +26,7 @@
 <div class="inputfield">
   <p class="text">Input a query to request a plot</p>
 	{#each inputs as input}
-	  <input type="text" class="form" bind:value={input} on:keydown={e => { if(e.key == "Enter") {sendPlotQuery()} } }>
+    <Inputfield bind:text={input} onEnter={sendPlotQuery} /> 
 		<br/>
 	{/each}
 	<button class="request" on:click={_ => inputs = [...inputs, ""]}>More</button>
@@ -108,15 +109,6 @@
 
   .text {
     color: #D1AC00;
-    font-weight: bold;
-  }
-
-  .form {
-    background-color: #0C1618;
-    border: 2px solid #D1AC00;
-    text-align: center;
-    color: #FAF4D3;
-    width: 25%;
     font-weight: bold;
   }
 
