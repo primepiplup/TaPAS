@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct ParsedQuery {
     query: Vec<Vec<String>>,
 }
@@ -7,6 +8,17 @@ impl From<Vec<Vec<String>>> for ParsedQuery {
         ParsedQuery {
             query: parsed_query,
         }
+    }
+}
+
+impl From<&str> for ParsedQuery {
+    fn from(query: &str) -> ParsedQuery {
+        let plus_replaced = query.trim().replace("+", " ");
+        let parsed: Vec<Vec<String>> = plus_replaced
+            .split_whitespace()
+            .map(|s| s.split(":").map(|s| s.to_string()).collect())
+            .collect();
+        return ParsedQuery::from(parsed);
     }
 }
 
@@ -49,6 +61,9 @@ impl ParsedQuery {
     fn without_excluded_tags(&self) -> Vec<String> {
         let mut collector: Vec<String> = Vec::new();
         for tag in self.query.clone() {
+            if tag[0] == "*" {
+                continue;
+            }
             if tag.len() > 1 {
                 match tag[1].as_str() {
                     "exclude" => continue,
@@ -77,6 +92,38 @@ impl ParsedQuery {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn query_parser_removes_plusses() {
+        let mut expected: Vec<&str> = Vec::new();
+        expected.push("tag");
+
+        let parsed: Vec<String> = ParsedQuery::from("+tag").get_parsed_tags();
+
+        assert_eq!(expected, parsed);
+    }
+
+    #[test]
+    fn query_parser_separates_on_whitespace() {
+        let mut expected: Vec<&str> = Vec::new();
+        expected.push("tag");
+        expected.push("another");
+
+        let parsed: Vec<String> = ParsedQuery::from("+tag another").get_parsed_tags();
+
+        assert_eq!(expected, parsed);
+    }
+
+    #[test]
+    fn query_parser_separates_on_plusses() {
+        let mut expected: Vec<&str> = Vec::new();
+        expected.push("tag");
+        expected.push("another");
+
+        let parsed: Vec<String> = ParsedQuery::from("+tag+another").get_parsed_tags();
+
+        assert_eq!(expected, parsed);
+    }
 
     #[test]
     fn generate_plot_title_takes_all_elements_of_vector_and_returns_title() {

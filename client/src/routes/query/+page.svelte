@@ -4,10 +4,12 @@
   let datapoints: {timestamp: string, data: string, tags: string[], key: number}[];
   let value: string = "";
   let status: number;
+  let dateFrom: string;
+  let dateUntil: string;
 
   async function sendQuery() {
     let requestBody = {
-      fieldInput: value ? value : ""
+      fieldInput: (value ? value : "") + generateAppendable()
     };
     let response = await fetch("api/query", {
       method: "POST",
@@ -20,6 +22,16 @@
     datapoints = await response.json();
   };
 
+  function generateAppendable(): string {
+    let text = "";
+    if(dateFrom) {
+      text += " *:DATE:FROM:" + dateFrom;
+    }
+    if(dateUntil) {
+      text += " *:DATE:UNTIL:" + dateUntil;
+    }
+    return text;
+  }
 </script>
 
 <div class="container">
@@ -27,6 +39,14 @@
     <p class="text">Input a query to retrieve your information</p>
     <input type="text" class="form" bind:value on:keydown={e => { if(e.key == "Enter") {sendQuery()} } }>
     <br/>
+    <div class="formtext">
+      <span class="text">From: 
+      <input type="date" class=dateform bind:value={dateFrom} /></span>
+    </div>
+    <div class="formtext">
+      <span class="text">Until: 
+      <input type="date" class=dateform bind:value={dateUntil} /></span>
+    </div>
     <button on:click={ sendQuery } class="request">Send Query</button>
   </div>
 
@@ -54,6 +74,14 @@
 {/if}
 
 <style>
+  .dateform {
+    background-color: #0C1618;
+    border: 2px solid #D1AC00;
+    text-align: center;
+    color: #FAF4D3;
+    font-weight: bold;
+  }
+
   .container {
     display: flex;
     justify-content: space-evenly;
@@ -62,10 +90,6 @@
 
   div {
     text-align: center;
-  }
-
-  input {
-    width: 100%;
   }
 
   .request {
@@ -86,7 +110,9 @@
     text-align: center;
     color: #FAF4D3;
     font-weight: bold;
+    width: 100%;
   }
+
   .inputfield {
     background: linear-gradient(180deg, #285a58 0%, #004643 50%);
     border: 2px solid #D1AC00;
@@ -105,9 +131,16 @@
     font-weight: bold;
   }
   
+  .formtext {
+    color: #D1AC00;
+    font-weight: bold;
+    margin-top: 5px;
+    margin-bottom: 5px;
+  }
 
   .text {
     color: #D1AC00;
     font-weight: bold;
+    margin-right: 5px;
   }
 </style>

@@ -1,12 +1,12 @@
-use crate::datapoint::Datapoint;
-use crate::parsedquery::ParsedQuery;
+use crate::numericaldata::NumericalData;
 use crate::plotter::plotcolors::PlotColors;
 use crate::plotter::util::*;
+use crate::queryresult::QueryResult;
 use crate::stats::preprocess::into_categorical;
 use chrono::prelude::*;
 use plotters::prelude::*;
 
-pub fn categorical_plot(dataset: &Vec<(Vec<Datapoint>, ParsedQuery)>) -> Option<String> {
+pub fn categorical_plot(dataset: &Vec<QueryResult>) -> Option<String> {
     let plot_x_start = 0;
     let plot_x_end = dataset.len() + 1;
 
@@ -14,7 +14,7 @@ pub fn categorical_plot(dataset: &Vec<(Vec<Datapoint>, ParsedQuery)>) -> Option<
     if titled_datasets.len() == 0 {
         return None;
     }
-    let (lower, upper) = apply_margin(get_total_upper_lower(titled_datasets.clone()));
+    let (lower, upper) = apply_margin(get_total_upper_lower(&titled_datasets));
 
     let filename = generate_filename(Local::now());
     let location: String = format!("generated/{}", filename);
@@ -22,7 +22,7 @@ pub fn categorical_plot(dataset: &Vec<(Vec<Datapoint>, ParsedQuery)>) -> Option<
     let root = BitMapBackend::new(&location, (640, 480)).into_drawing_area();
     root.fill(plot_colors.background()).unwrap();
 
-    let (title, font_size) = generate_title(titled_datasets.clone());
+    let (title, font_size) = generate_title(&titled_datasets);
 
     let mut chart = ChartBuilder::on(&root)
         .caption(
@@ -48,7 +48,7 @@ pub fn categorical_plot(dataset: &Vec<(Vec<Datapoint>, ParsedQuery)>) -> Option<
                 return "".to_string();
             }
             match titled_datasets.get(i - 1) {
-                Some((_, title)) => title.to_owned(),
+                Some(dataset) => dataset.get_title(),
                 None => "".to_string(),
             }
         })
@@ -59,7 +59,7 @@ pub fn categorical_plot(dataset: &Vec<(Vec<Datapoint>, ParsedQuery)>) -> Option<
         chart
             .draw_series(
                 titled_data
-                    .0
+                    .get_data()
                     .iter()
                     .map(|value| Circle::new((i + 1, *value), 5, plot_colors.labelstyle().clone())),
             )
@@ -69,21 +69,21 @@ pub fn categorical_plot(dataset: &Vec<(Vec<Datapoint>, ParsedQuery)>) -> Option<
     return Some(filename);
 }
 
-fn generate_title(titled_data: Vec<(Vec<f64>, String)>) -> (String, u32) {
-    let mut title: String = titled_data[0].1.clone();
+fn generate_title(titled_data: &Vec<NumericalData>) -> (String, u32) {
+    let mut title: String = titled_data[0].get_title().clone();
     let mut counter = 1;
     while counter < titled_data.len() {
-        title = format!("{} vs {}", title, titled_data[counter].1);
+        title = format!("{} vs {}", title, titled_data[counter].get_title());
         counter += 1;
     }
     let font_size = 10 + (40 / counter as u32);
     return (title, font_size);
 }
 
-fn get_total_upper_lower(titled_data: Vec<(Vec<f64>, String)>) -> (f64, f64) {
+fn get_total_upper_lower(titled_data: &Vec<NumericalData>) -> (f64, f64) {
     let mut collector: Vec<f64> = Vec::new();
-    for (values, _) in titled_data {
-        let (lower, upper) = get_upper_lower(&values);
+    for dataset in titled_data {
+        let (lower, upper) = get_upper_lower(&dataset.get_data());
         collector.push(lower);
         collector.push(upper);
     }
@@ -97,7 +97,7 @@ mod test {
 
     #[test]
     fn generate_title_generates_expected_title() {
-        let mut collector: Vec<(Vec<Datapoint>, ParsedQuery)> = Vec::new();
+        let mut collector: Vec<QueryResult> = Vec::new();
         let datastore = Datastore::new();
         datastore.add_datapoint("6 hours +sleep +coffee");
         datastore.add_datapoint("7 hours +sleep +coffee");
@@ -110,14 +110,14 @@ mod test {
         collector.push(datastore.query("sleep cola"));
 
         let titled_data = into_categorical(&collector);
-        let (title, _) = generate_title(titled_data);
+        let (title, _) = generate_title(&titled_data);
 
         assert_eq!(title, "sleep, coffee vs sleep, tea vs sleep, cola")
     }
 
     #[test]
     fn generate_title_generates_appropriate_text_size_for_display() {
-        let mut collector: Vec<(Vec<Datapoint>, ParsedQuery)> = Vec::new();
+        let mut collector: Vec<QueryResult> = Vec::new();
         let datastore = Datastore::new();
         datastore.add_datapoint("6 hours +sleep +coffee");
         datastore.add_datapoint("7 hours +sleep +coffee");
@@ -130,14 +130,14 @@ mod test {
         collector.push(datastore.query("sleep cola"));
 
         let titled_data = into_categorical(&collector);
-        let (_, size) = generate_title(titled_data);
+        let (_, size) = generate_title(&titled_data);
 
         assert_eq!(size, 23)
     }
 
     #[test]
     fn get_total_upper_lower_gets_upper_and_lower_of_vector_of_titled_data() {
-        let mut collector: Vec<(Vec<Datapoint>, ParsedQuery)> = Vec::new();
+        let mut collector: Vec<QueryResult> = Vec::new();
         let datastore = Datastore::new();
         datastore.add_datapoint("6 hours +coffee");
         datastore.add_datapoint("7 hours +coffee");
@@ -147,7 +147,7 @@ mod test {
         collector.push(datastore.query("tea"));
 
         let titled_data = into_categorical(&collector);
-        let (lower, upper) = get_total_upper_lower(titled_data);
+        let (lower, upper) = get_total_upper_lower(&titled_data);
 
         assert_eq!(lower, 6.0);
         assert_eq!(upper, 8.0);
@@ -155,7 +155,7 @@ mod test {
 
     #[test]
     fn plotting_queries_with_no_results_returns_none() {
-        let mut collector: Vec<(Vec<Datapoint>, ParsedQuery)> = Vec::new();
+        let mut collector: Vec<QueryResult> = Vec::new();
         let datastore = Datastore::new();
         datastore.add_datapoint("6 hours +sleep +coffee");
         datastore.add_datapoint("7 hours +sleep +coffee");

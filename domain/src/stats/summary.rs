@@ -1,4 +1,4 @@
-use crate::{datapoint::Datapoint, parsedquery::ParsedQuery, plotter::util::get_numeric_data};
+use crate::{datapoint::Datapoint, plotter::util::get_numeric_data, queryresult::QueryResult};
 
 use super::stats::average;
 
@@ -25,11 +25,11 @@ impl Summary {
         }
     }
 
-    pub fn summaries_from(queried: Vec<(Vec<Datapoint>, ParsedQuery)>) -> Vec<Summary> {
+    pub fn summaries_from(queryresults: Vec<QueryResult>) -> Vec<Summary> {
         let mut collector = Vec::new();
-        for (datapoints, query) in queried {
-            let title = query.collect_query();
-            let summary = Summary::from(datapoints).set_name(title);
+        for queryresult in queryresults {
+            let title = queryresult.get_query().collect_query();
+            let summary = Summary::from(queryresult.get_datapoints()).set_name(title);
             collector.push(summary);
         }
         return collector;
@@ -86,9 +86,9 @@ mod tests {
         datastore.add_datapoint("7 hours +coffee");
         datastore.add_datapoint("7 hours +tea");
         datastore.add_datapoint("8 hours +tea");
-        let (datapoints, _) = datastore.query("cola");
+        let queryresult = datastore.query("cola");
 
-        let summary = Summary::from(datapoints);
+        let summary = Summary::from(queryresult.get_datapoints());
 
         assert_eq!(summary.get_mean(), 0.0);
         assert_eq!(summary.get_name(), "".to_string());
@@ -102,9 +102,9 @@ mod tests {
         datastore.add_datapoint("7 hours +coffee");
         datastore.add_datapoint("7 hours +tea");
         datastore.add_datapoint("8 hours +tea");
-        let (datapoints, _) = datastore.query("tea");
+        let queryresult = datastore.query("tea");
 
-        let summary = Summary::from(datapoints);
+        let summary = Summary::from(queryresult.get_datapoints());
 
         assert_eq!(summary.get_mean(), 7.5);
     }

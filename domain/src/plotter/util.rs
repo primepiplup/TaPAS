@@ -20,10 +20,6 @@ pub fn get_upper_lower<T: Copy + PartialOrd>(points: &Vec<T>) -> (T, T) {
 }
 
 pub fn get_numeric_data(data: &Vec<Datapoint>) -> Option<(Vec<DateTime<Local>>, Vec<f64>)> {
-    if data.len() < 1 {
-        return None;
-    }
-
     let mut number_collector = Vec::new();
     let mut date_collector = Vec::new();
     for datapoint in data {
@@ -34,6 +30,10 @@ pub fn get_numeric_data(data: &Vec<Datapoint>) -> Option<(Vec<DateTime<Local>>, 
             }
             Err(_) => (),
         };
+    }
+
+    if date_collector.len() < 1 {
+        return None;
     }
 
     Some((date_collector, number_collector))
@@ -88,15 +88,15 @@ mod test {
     }
 
     #[test]
-    fn get_numeric_data_for_datapoints_without_numbers_returns_empty_vector_for_numbers() {
+    fn get_numeric_data_for_datapoints_without_numbers_returns_none() {
         let mut datapoints: Vec<Datapoint> = Vec::new();
         datapoints.push(create_datapoint("things we don't care about"));
         datapoints.push(create_datapoint("how was your day! "));
         datapoints.push(create_datapoint("whoa cool idea +million-dollar-idea!"));
 
-        let (_, actual) = get_numeric_data(&datapoints).unwrap();
+        let result = get_numeric_data(&datapoints);
 
-        assert_eq!(actual, Vec::new());
+        assert_eq!(result, None);
     }
 
     #[test]

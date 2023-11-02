@@ -1,18 +1,16 @@
-use crate::datapoint::Datapoint;
-use crate::parsedquery::ParsedQuery;
 use crate::plotter::plotcolors::PlotColors;
 use crate::plotter::util::*;
+use crate::queryresult::QueryResult;
 use crate::stats::model_fit::linear_regression;
 use chrono::{DateTime, Local, TimeZone};
 use plotters::prelude::*;
 use std::io::Error;
 
 pub fn scatterplot(
-    data: &Vec<Datapoint>,
-    parsed_query: ParsedQuery,
+    data: &QueryResult,
     with_regression: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let (datetimes, num_data) = match get_numeric_data(data) {
+    let (datetimes, num_data) = match get_numeric_data(&data.get_datapoints()) {
         Some(result) => result,
         None => return Err(Box::new(Error::new(std::io::ErrorKind::NotFound, "test"))),
     };
@@ -24,7 +22,7 @@ pub fn scatterplot(
 
     let filename = generate_filename(Local::now());
     let location: String = format!("generated/{}", filename);
-    let plot_title: String = parsed_query.generate_plot_title();
+    let plot_title: String = data.get_query().generate_plot_title();
 
     let plot_colors = PlotColors::new();
     let root = BitMapBackend::new(&location, (640, 480)).into_drawing_area();
@@ -106,6 +104,8 @@ fn plot_as_dates((early, late): (DateTime<Local>, DateTime<Local>)) -> bool {
 #[cfg(test)]
 mod test {
     use crate::datapoint::create_datapoint;
+    use crate::datapoint::Datapoint;
+    use crate::parsedquery::ParsedQuery;
     use chrono::Duration;
 
     use super::*;
@@ -147,8 +147,9 @@ mod test {
     #[test]
     fn empty_input_into_plot_returns_error() {
         let datapoints: Vec<Datapoint> = Vec::new();
+        let data: QueryResult = QueryResult::from(datapoints, ParsedQuery::from(Vec::new()));
 
-        let output = scatterplot(&datapoints, ParsedQuery::from(Vec::new()), false);
+        let output = scatterplot(&data, false);
 
         assert_eq!(output.ok(), None);
     }
