@@ -1,5 +1,8 @@
 <script lang='ts'>
+    import Error from "../error.svelte";
+
 	export let datapoint: {timestamp: string, data: string, tags: string[], key: number};
+	let deletionResult: {datastoreDeleted: boolean, databaseDeleted: boolean};
 	let editing = false;
 	let time = datapoint.timestamp.split(" ")[4];
 	let date = getDateFromString(datapoint.timestamp);
@@ -90,6 +93,22 @@
 		getDatapointValues();
 	}
 
+	async function deleteDatapoint() {
+    let requestBody = {
+			value: key,
+    };
+    let response = await fetch("api/delete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+    status = response.status;
+		deletionResult = await response.json();
+		switchMode();
+	}
+
 	function toDateTag(date: string): string {
 		return " +DATE:"+date;
 	}
@@ -99,13 +118,27 @@
 	}
 </script>
 
-{#if editing}
+{#if deletionResult}
+	<div class="editbox">
+		{#if deletionResult.databaseDeleted}
+			<span>Successfully removed from database.</span>
+		{:else}
+			<span>Removal from database unsuccessful.</span>
+		{/if}
+		{#if deletionResult.datastoreDeleted}
+			<span>Successfully removed from datastore.</span>
+		{:else}
+			<span>Removal from datastore unsuccessful.</span>
+		{/if}
+	</div>
+{:else if editing}
 	<div class="editbox">
 		<input type="text" bind:value={data} class="dataentry"/>
 		<br/>
 		<input type="date" bind:value={date} />
 		<input type="time" bind:value={time} />
 		<br/>
+		<button class="deletebutton" on:click={deleteDatapoint}>Delete</button>
 		<button class="editbutton" on:click={updateDatapoint}>Submit</button>
 		<button class="editbutton" on:click={switchMode}>Cancel</button>
 	</div>
@@ -134,6 +167,15 @@
 
 	.dataentry {
 		width: 80%;
+	}
+
+	.deletebutton {
+		margin-left: 10px;
+		color: #D1AC00;
+    background-color: #C1292E;
+    border-top: 0px solid #D1AC00;
+    border: 2px solid #D1AC00;
+    font-weight: bold;
 	}
 	
 	.editbutton {

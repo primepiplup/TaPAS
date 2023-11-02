@@ -26,67 +26,6 @@ struct Form<'a> {
     value: &'a str,
 }
 
-#[derive(Deserialize)]
-#[serde(crate = "rocket::serde")]
-struct CompareForm<'a> {
-    #[serde(borrow)]
-    #[serde(rename = "fieldInputs")]
-    queries: Vec<&'a str>,
-}
-
-#[derive(Deserialize)]
-#[serde(crate = "rocket::serde")]
-struct UpdateForm<'a> {
-    #[serde(rename = "fieldInput")]
-    value: &'a str,
-    key: u64,
-}
-
-#[derive(Deserialize)]
-#[serde(crate = "rocket::serde")]
-struct PlotRequest<'a> {
-    #[serde(rename = "fieldInput")]
-    value: &'a str,
-    #[serde(rename = "withRegression")]
-    with_regression: bool,
-}
-
-#[derive(Deserialize)]
-#[serde(crate = "rocket::serde")]
-struct PredictionForm<'a> {
-    #[serde(rename = "fieldInput")]
-    query: &'a str,
-    #[serde(rename = "targetGoal")]
-    goal: f64,
-}
-
-#[derive(Serialize)]
-#[serde(crate = "rocket::serde")]
-struct Image {
-    filename: String,
-}
-
-#[derive(Serialize)]
-#[serde(crate = "rocket::serde")]
-struct ComparisonResults {
-    filename: String,
-    summaries: Vec<SummaryDTO>,
-}
-
-#[derive(Serialize)]
-#[serde(crate = "rocket::serde")]
-struct Prediction {
-    prediction: String,
-    #[serde(rename = "willIntercept")]
-    will_intercept: bool,
-}
-
-#[derive(Serialize)]
-#[serde(crate = "rocket::serde")]
-struct Tag {
-    tag: String,
-}
-
 #[post("/input", format = "application/json", data = "<form_input>")]
 async fn input(
     form_input: Json<Form<'_>>,
@@ -100,6 +39,14 @@ async fn input(
     }
 }
 
+#[derive(Deserialize)]
+#[serde(crate = "rocket::serde")]
+struct UpdateForm<'a> {
+    #[serde(rename = "fieldInput")]
+    value: &'a str,
+    key: u64,
+}
+
 #[post("/update", format = "application/json", data = "<form_input>")]
 async fn update(
     form_input: Json<UpdateForm<'_>>,
@@ -111,10 +58,70 @@ async fn update(
     status::Custom(Status::Ok, Json(DatapointDTO::from(updated_datapoint)))
 }
 
+#[derive(Deserialize)]
+#[serde(crate = "rocket::serde")]
+struct DeleteKey {
+    value: u64,
+}
+
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
+struct DeleteConfirmation {
+    #[serde(rename = "datastoreDeleted")]
+    datastore_deleted: bool,
+    #[serde(rename = "databaseDeleted")]
+    database_deleted: bool,
+}
+
+#[post("/delete", format = "application/json", data = "<key>")]
+async fn delete(
+    key: Json<DeleteKey>,
+    datastorage: &State<Datastore>,
+    dbmanager: &State<DBManager>,
+) -> status::Custom<Json<DeleteConfirmation>> {
+    let datastore_deleted = match datastorage.delete_datapoint(key.value) {
+        Some(_) => true,
+        None => false,
+    };
+    let database_deleted = dbmanager.delete_datapoint(key.value).await;
+    if database_deleted && database_deleted {
+        return status::Custom(
+            Status::Ok,
+            Json(DeleteConfirmation {
+                datastore_deleted,
+                database_deleted,
+            }),
+        );
+    } else {
+        return status::Custom(
+            Status::InternalServerError,
+            Json(DeleteConfirmation {
+                datastore_deleted,
+                database_deleted,
+            }),
+        );
+    }
+}
+
 #[post("/query", format = "application/json", data = "<form_input>")]
 fn query(form_input: Json<Form<'_>>, datastorage: &State<Datastore>) -> Json<Vec<DatapointDTO>> {
     let queryresult = datastorage.query(form_input.value);
     Json(dto_vec_from(queryresult.get_datapoints()))
+}
+
+#[derive(Deserialize)]
+#[serde(crate = "rocket::serde")]
+struct PlotRequest<'a> {
+    #[serde(rename = "fieldInput")]
+    value: &'a str,
+    #[serde(rename = "withRegression")]
+    with_regression: bool,
+}
+
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
+struct Image {
+    filename: String,
 }
 
 #[post("/plot", format = "application/json", data = "<form_input>")]
@@ -132,6 +139,21 @@ fn plot(
             }),
         ),
     }
+}
+
+#[derive(Deserialize)]
+#[serde(crate = "rocket::serde")]
+struct CompareForm<'a> {
+    #[serde(borrow)]
+    #[serde(rename = "fieldInputs")]
+    queries: Vec<&'a str>,
+}
+
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
+struct ComparisonResults {
+    filename: String,
+    summaries: Vec<SummaryDTO>,
 }
 
 #[post("/comparison", format = "application/json", data = "<form_input>")]
@@ -166,6 +188,23 @@ fn comparison(
             summaries,
         }),
     )
+}
+
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
+struct Prediction {
+    prediction: String,
+    #[serde(rename = "willIntercept")]
+    will_intercept: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(crate = "rocket::serde")]
+struct PredictionForm<'a> {
+    #[serde(rename = "fieldInput")]
+    query: &'a str,
+    #[serde(rename = "targetGoal")]
+    goal: f64,
 }
 
 #[post("/predict", format = "application/json", data = "<form_input>")]
@@ -207,6 +246,12 @@ fn predict(
     )
 }
 
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
+struct Tag {
+    tag: String,
+}
+
 #[get("/tags")]
 fn tags(datastorage: &State<Datastore>) -> Json<Vec<Tag>> {
     let tags = datastorage.retrieve_taglist();
@@ -225,7 +270,7 @@ async fn rocket() -> _ {
     rocket::build()
         .mount(
             "/api",
-            routes![input, query, plot, tags, predict, update, comparison],
+            routes![input, query, plot, tags, predict, update, delete, comparison],
         )
         .mount("/plot", FileServer::from(relative!("../generated")))
         .manage(datastore)

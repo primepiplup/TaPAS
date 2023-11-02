@@ -48,6 +48,16 @@ impl Datastore {
         return new_datapoint;
     }
 
+    pub fn delete_datapoint(&self, key: u64) -> Option<Datapoint> {
+        let mut datapoints = self.datapoints.lock().expect("mutex holder crashed");
+        for (i, datapoint) in datapoints.clone().into_iter().enumerate() {
+            if datapoint.get_key() == key {
+                return Some(datapoints.remove(i));
+            }
+        }
+        return None;
+    }
+
     pub fn retrieve_datapoints(&self) -> Vec<Datapoint> {
         let lock = self.datapoints.lock().expect("mutex holder crashed");
         lock.clone()
@@ -133,6 +143,31 @@ mod tests {
     use crate::datapoint;
 
     use super::*;
+
+    #[test]
+    fn datapoints_can_be_deleted_based_on_key() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("data +one +two");
+        datastore.add_datapoint("more +one");
+
+        let deleted = datastore.delete_datapoint(1).unwrap();
+        let remaining = datastore.retrieve_datapoints();
+
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].get_data(), "more");
+        assert_eq!(deleted.get_data(), "data");
+    }
+
+    #[test]
+    fn deleting_based_on_non_accessible_key_returns_none() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("data +one +two");
+        datastore.add_datapoint("more +one");
+
+        let result = datastore.delete_datapoint(4);
+
+        assert_eq!(result, None);
+    }
 
     #[test]
     fn query_can_exclude_certain_tags() {

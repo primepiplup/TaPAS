@@ -52,6 +52,17 @@ impl DBManager {
         }
     }
 
+    pub async fn delete_datapoint(&self, key: u64) -> bool {
+        match sqlx::query("DELETE FROM datapoints WHERE data_key = ?")
+            .bind(key)
+            .execute(&self.pool)
+            .await
+        {
+            Ok(_) => true,
+            Err(_) => false,
+        }
+    }
+
     pub async fn load_datapoints(&self) -> Vec<Datapoint> {
         let query_rows = self.fetch_db_datapoints().await;
         let datapoint_dsos: Vec<DatapointDSO> = query_rows
