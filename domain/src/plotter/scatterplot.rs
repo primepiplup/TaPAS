@@ -1,8 +1,8 @@
-use crate::plotter::plotcolors::PlotColors;
 use crate::plotter::util::*;
 use crate::queryresult::QueryResult;
 use crate::stats::model_fit::linear_regression;
-use chrono::{DateTime, Local, TimeZone};
+use crate::{linearfunction::LinearFunction, plotter::plotcolors::PlotColors};
+use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
 use plotters::prelude::*;
 use std::io::Error;
 
@@ -65,7 +65,7 @@ pub fn scatterplot(
                 datapoints
                     .iter()
                     .map(|(datetime, _)| (*datetime, fitted_line(datetime.timestamp().as_f64()))),
-                &BLUE,
+                &CYAN,
             ))
             .unwrap();
     }
@@ -73,6 +73,91 @@ pub fn scatterplot(
     root.present()?;
 
     Ok(filename.to_owned())
+}
+
+pub fn predictionplot(
+    data: &QueryResult,
+    linear_function: LinearFunction,
+    target: f64,
+    date: NaiveDateTime,
+) -> String {
+    let (datetimes, num_data) = get_numeric_data(&data.get_datapoints()).unwrap();
+
+    let date = Local.from_local_datetime(&date).unwrap();
+    let (lower_date, mut upper_date): (DateTime<Local>, DateTime<Local>) =
+        get_daterange(&datetimes);
+    let timebuffer = (upper_date - lower_date) / 10;
+    if upper_date < date {
+        upper_date = date + timebuffer;
+    };
+
+    let mut allnums = num_data.clone();
+    allnums.push(target);
+    let (lower_num, upper_num): (f64, f64) = apply_margin(get_upper_lower(&allnums));
+
+    let as_date: bool = plot_as_dates((lower_date, upper_date));
+    let mut datapoints: Vec<(DateTime<Local>, f64)> = datetimes.into_iter().zip(num_data).collect();
+
+    let filename = generate_filename(Local::now());
+    let location: String = format!("generated/{}", filename);
+    let plot_title: String = data.get_query().generate_plot_title();
+
+    let plot_colors = PlotColors::new();
+    let root = BitMapBackend::new(&location, (640, 480)).into_drawing_area();
+    root.fill(plot_colors.background()).unwrap();
+
+    let mut chart = ChartBuilder::on(&root)
+        .caption(
+            plot_title,
+            ("sans-serif", 35)
+                .with_color(plot_colors.textcolor())
+                .into_text_style(&root),
+        )
+        .margin(10)
+        .x_label_area_size(30)
+        .y_label_area_size(30)
+        .build_cartesian_2d(lower_date..upper_date, lower_num..upper_num)
+        .unwrap();
+
+    chart
+        .configure_mesh()
+        .label_style(plot_colors.highlight())
+        .axis_style(plot_colors.textcolor())
+        .bold_line_style(plot_colors.highlight())
+        .light_line_style(plot_colors.darklight())
+        .x_label_formatter(&|datetime| format_datetime(datetime, as_date))
+        .draw()
+        .unwrap();
+
+    chart
+        .draw_series(
+            datapoints
+                .iter()
+                .map(|coord| Circle::new(*coord, 5, plot_colors.labelstyle().clone())),
+        )
+        .unwrap();
+
+    let fitted_line = linear_function.function();
+    datapoints.push((date, target));
+    chart
+        .draw_series(LineSeries::new(
+            datapoints
+                .iter()
+                .map(|(datetime, _)| (*datetime, fitted_line(datetime.timestamp().as_f64()))),
+            &CYAN,
+        ))
+        .unwrap();
+
+    chart
+        .draw_series(LineSeries::new(
+            datapoints.iter().map(|(datetime, _)| (*datetime, target)),
+            &GREEN,
+        ))
+        .unwrap();
+
+    root.present().unwrap();
+
+    return filename.to_string();
 }
 
 fn get_daterange(data: &Vec<DateTime<Local>>) -> (DateTime<Local>, DateTime<Local>) {

@@ -6,7 +6,7 @@ use crate::summary_dto::SummaryDTO;
 use chrono::NaiveDateTime;
 use domain::datastore::Datastore;
 use domain::plotter::categorical::categorical_plot;
-use domain::plotter::scatterplot::scatterplot;
+use domain::plotter::scatterplot::{predictionplot, scatterplot};
 use domain::stats::model_fit::linear_regression;
 use domain::stats::stats::compare;
 use persistence::dbmanager::DBManager;
@@ -193,6 +193,7 @@ fn comparison(
 #[derive(Serialize)]
 #[serde(crate = "rocket::serde")]
 struct Prediction {
+    filename: String,
     prediction: String,
     #[serde(rename = "willIntercept")]
     will_intercept: bool,
@@ -220,6 +221,7 @@ fn predict(
             return status::Custom(
                 Status::InternalServerError,
                 Json(Prediction {
+                    filename: "".to_string(),
                     prediction: "float parsing failure".to_string(),
                     will_intercept: false,
                 }),
@@ -237,9 +239,22 @@ fn predict(
         will_intercept = false;
     }
 
+    let filename: String;
+    if will_intercept {
+        filename = predictionplot(
+            &queryresult,
+            linear_function,
+            form_input.goal,
+            predicted_datetime,
+        );
+    } else {
+        filename = "".to_string();
+    }
+
     status::Custom(
         Status::Ok,
         Json(Prediction {
+            filename,
             prediction: predicted_datetime.format("%Y-%m-%d %H:%M:%S").to_string(),
             will_intercept,
         }),

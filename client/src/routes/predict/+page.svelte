@@ -1,6 +1,6 @@
 <script lang='ts'>
   import Error from "../error.svelte";
-  let prediction: {prediction: string, willIntercept: boolean} | undefined;
+  let prediction: {prediction: string, willIntercept: boolean, filename: string} | undefined;
   let value: string = "";
   let targetGoal: number;
   let status: number;
@@ -62,6 +62,12 @@
     <p class="predict-text">The current trend will not reach the stated goal</p>
   </div>
 {/if}
+
+<div class="image">
+  {#if prediction && status < 300 && prediction.filename != ""}
+   <img src={"/plot/" + prediction.filename} alt="cool plot" />
+  {/if}
+</div>
 
 {#if status == undefined}
   <br/>
