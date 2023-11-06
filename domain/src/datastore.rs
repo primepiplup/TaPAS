@@ -28,6 +28,54 @@ impl Datastore {
         return new_datapoint;
     }
 
+    fn get_by_key(&self, keys: Vec<u64>) -> Vec<Datapoint> {
+        let mut collector: Vec<Datapoint> = Vec::new();
+        let datapoints = self.retrieve_datapoints();
+        for datapoint in datapoints {
+            if keys.contains(&datapoint.get_key()) {
+                collector.push(datapoint);
+            }
+        }
+        return collector;
+    }
+
+    pub fn batch_operation(&self, tags: &str, keys: Vec<u64>, add: bool) -> Vec<Datapoint> {
+        let tags: Vec<String> = tags
+            .trim()
+            .replace("+", " ")
+            .split_whitespace()
+            .map(|str| str.to_string())
+            .collect();
+        for tag in tags {
+            if add {
+                self.batch_add_tag(keys.clone(), tag);
+            } else {
+                self.batch_remove_tag(keys.clone(), tag);
+            }
+        }
+        return self.get_by_key(keys);
+    }
+
+    pub fn batch_add_tag(&self, keys: Vec<u64>, tag: String) -> bool {
+        let mut datapoints = self.datapoints.lock().expect("mutex holder crashed");
+        for (i, datapoint) in datapoints.clone().into_iter().enumerate() {
+            if keys.contains(&datapoint.get_key()) {
+                datapoints[i].add_tag(&tag);
+            }
+        }
+        return true;
+    }
+
+    pub fn batch_remove_tag(&self, keys: Vec<u64>, tag: String) -> bool {
+        let mut datapoints = self.datapoints.lock().expect("mutex holder crashed");
+        for (i, datapoint) in datapoints.clone().into_iter().enumerate() {
+            if keys.contains(&datapoint.get_key()) {
+                datapoints[i].remove_tag(&tag);
+            }
+        }
+        return true;
+    }
+
     pub fn update_datapoint(&self, input: &str, key: u64) -> Datapoint {
         let mut new_datapoint = create_datapoint(input);
         self.append_tags(new_datapoint.get_tags());
@@ -143,6 +191,112 @@ mod tests {
     use crate::datapoint;
 
     use super::*;
+
+    #[test]
+    fn key_selection_returns_datapoints_with_the_given_keys() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("one");
+        datastore.add_datapoint("two");
+        datastore.add_datapoint("three");
+
+        let selected = datastore.get_by_key(vec![1, 3]);
+
+        assert_eq!(selected[0].get_data(), "one");
+        assert_eq!(selected[1].get_data(), "three");
+    }
+
+    #[test]
+    fn batch_operation_can_be_used_to_add_multiple_tags_to_multiple_datapoints() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("one");
+        datastore.add_datapoint("two");
+        datastore.add_datapoint("three");
+        let tag = "tag".to_string();
+
+        datastore.batch_operation("tag more", vec![1, 3], true);
+        let datapoints = datastore.retrieve_datapoints();
+
+        assert_eq!(
+            datapoints[0].get_tags(),
+            &vec![tag.clone(), "more".to_string()]
+        );
+        assert_eq!(datapoints[1].get_tags(), &Vec::<String>::new());
+        assert_eq!(
+            datapoints[2].get_tags(),
+            &vec![tag.clone(), "more".to_string()]
+        );
+    }
+
+    #[test]
+    fn batch_operation_can_be_used_to_remove_multiple_tags_from_multiple_datapoints() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("one +tag +more");
+        datastore.add_datapoint("two +tag +more");
+        datastore.add_datapoint("three +tag +more");
+        let tag = "tag".to_string();
+
+        datastore.batch_operation("+tag+more", vec![1, 3], false);
+        let datapoints = datastore.retrieve_datapoints();
+
+        assert_eq!(datapoints[0].get_tags(), &Vec::<String>::new());
+        assert_eq!(
+            datapoints[1].get_tags(),
+            &vec![tag.clone(), "more".to_string()]
+        );
+        assert_eq!(datapoints[2].get_tags(), &Vec::<String>::new());
+    }
+
+    #[test]
+    fn batch_add_tag_takes_selected_key_vector_and_adds_tags_to_each_selected_datapoint() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("one");
+        datastore.add_datapoint("two");
+        datastore.add_datapoint("three");
+        let tag = "tag".to_string();
+
+        datastore.batch_add_tag(vec![1, 3], tag.clone());
+        let datapoints = datastore.retrieve_datapoints();
+
+        assert_eq!(datapoints[0].get_tags(), &vec![tag.clone()]);
+        assert_eq!(datapoints[1].get_tags(), &Vec::<String>::new());
+        assert_eq!(datapoints[2].get_tags(), &vec![tag.clone()]);
+    }
+
+    #[test]
+    fn batch_remove_tag_takes_selected_key_vector_and_removes_each_of_the_selected_tag_from_all_selected_datapoints(
+    ) {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("one +tag");
+        datastore.add_datapoint("two +tag");
+        datastore.add_datapoint("three +tag");
+        let tag = "tag".to_string();
+
+        datastore.batch_remove_tag(vec![1, 3], tag.clone());
+        let datapoints = datastore.retrieve_datapoints();
+
+        assert_eq!(datapoints[0].get_tags(), &Vec::<String>::new());
+        assert_eq!(datapoints[1].get_tags(), &vec![tag.clone()]);
+        assert_eq!(datapoints[2].get_tags(), &Vec::<String>::new());
+    }
+
+    #[test]
+    fn batch_remove_removes_every_instance_of_a_tag() {
+        let datastore = Datastore::new();
+        datastore.add_datapoint("one +tag +else +tag +tag +other +tag");
+        datastore.add_datapoint("two +tag");
+        datastore.add_datapoint("three +tag");
+        let tag = "tag".to_string();
+
+        datastore.batch_remove_tag(vec![1, 3], tag.clone());
+        let datapoints = datastore.retrieve_datapoints();
+
+        assert_eq!(
+            datapoints[0].get_tags(),
+            &vec!["else".to_string(), "other".to_string()]
+        );
+        assert_eq!(datapoints[1].get_tags(), &vec![tag.clone()]);
+        assert_eq!(datapoints[2].get_tags(), &Vec::<String>::new());
+    }
 
     #[test]
     fn datapoints_can_be_deleted_based_on_key() {

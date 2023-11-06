@@ -3,6 +3,7 @@
   import Error from "../error.svelte";
   let datapoints: {timestamp: string, data: string, tags: string[], key: number}[];
   let value: string = "";
+  let batchEditTags: string;
   let status: number;
   let dateFrom: string;
   let dateUntil: string;
@@ -21,6 +22,28 @@
     status = response.status;
     datapoints = await response.json();
   };
+
+  async function requestBatchEdit(add: boolean) {
+    let requestBody = {
+      add,
+      tags: batchEditTags,
+      keys: collectKeys(),
+    }
+    let response = await fetch("api/batchedit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+    status = response.status;
+    datapoints = await response.json();
+  }
+
+  function collectKeys(): number[] {
+    let keys = datapoints.map((datapoint) => datapoint.key);
+    return keys;
+  }
 
   function generateAppendable(): string {
     let text = "";
@@ -52,6 +75,12 @@
 
   <div>
     {#if datapoints}
+    <div class="batchedit">
+      <p class="text">Batch edit: </p>
+      <input type="text" class="form" bind:value={batchEditTags} />
+      <button class="request" on:click={() => requestBatchEdit(true)}>Add to all</button>
+      <button class="request" on:click={() => requestBatchEdit(false)}>Remove from all</button>
+    </div>
       {#each datapoints as datapoint}
         <Result datapoint={datapoint} />
       {/each}
@@ -74,6 +103,15 @@
 {/if}
 
 <style>
+  .batchedit {
+    background: linear-gradient(180deg, #285a58 0%, #004643 50%);
+    border: 2px solid #D1AC00;
+    padding: 20px;
+    width: 100%;
+    flex: 0 0 50%;
+    margin-bottom: 10px;
+  }
+  
   .dateform {
     background-color: #0C1618;
     border: 2px solid #D1AC00;

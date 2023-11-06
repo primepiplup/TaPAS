@@ -60,6 +60,34 @@ async fn update(
 
 #[derive(Deserialize)]
 #[serde(crate = "rocket::serde")]
+struct EditRequest<'a> {
+    tags: &'a str,
+    add: bool,
+    keys: Vec<u64>,
+}
+
+#[post("/batchedit", format = "application/json", data = "<edit_request>")]
+async fn batchedit(
+    edit_request: Json<EditRequest<'_>>,
+    datastorage: &State<Datastore>,
+    dbmanager: &State<DBManager>,
+) -> status::Custom<Json<Vec<DatapointDTO>>> {
+    let datapoints = datastorage.batch_operation(
+        edit_request.tags,
+        edit_request.keys.clone(),
+        edit_request.add,
+    );
+    for datapoint in datapoints.clone() {
+        if !dbmanager.update_datapoint(datapoint).await {
+            return status::Custom(Status::InternalServerError, Json(dto_vec_from(datapoints)));
+        }
+    }
+
+    return status::Custom(Status::Ok, Json(dto_vec_from(datapoints)));
+}
+
+#[derive(Deserialize)]
+#[serde(crate = "rocket::serde")]
 struct DeleteKey {
     value: u64,
 }
@@ -285,7 +313,7 @@ async fn rocket() -> _ {
     rocket::build()
         .mount(
             "/api",
-            routes![input, query, plot, tags, predict, update, delete, comparison],
+            routes![input, query, plot, tags, predict, update, delete, batchedit, comparison],
         )
         .mount("/plot", FileServer::from(relative!("../generated")))
         .manage(datastore)

@@ -62,6 +62,21 @@ impl Datapoint {
         self.key
     }
 
+    pub fn add_tag(&mut self, tag: &String) -> () {
+        self.tags.push(tag.clone());
+    }
+
+    pub fn remove_tag(&mut self, tag: &String) -> () {
+        let mut i = 0;
+        while i < self.tags.len() {
+            if &self.tags[i] == tag {
+                self.tags.remove(i); // this mutates the vector... after one removal, 'i' values will not be accurate anymore...
+            } else {
+                i += 1;
+            }
+        }
+    }
+
     fn strip_non_numeric(&self) -> String {
         self.data
             .chars()
